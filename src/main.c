@@ -1,6 +1,6 @@
 #include <stdio.h>
 
 int main() {
-    printf("SimpleMQTT project initialized.\\n");
+    printf("SimpleMQTT project initialized.\n");
     return 0;
 }
