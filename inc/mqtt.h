@@ -61,7 +61,131 @@ union mqtt_header // Reprezentuje pierwszy bajt nagłówka MQTT (Fixed Header).
 };
 
 
+// Pierwszy pakiet ktory musi zostac wyslany gdy nowy klient estabilish connection (estabilish to za dobre slowo zeby je tlumaczyc na polski :P)
+// To musi byc wyslane raz i tylko raz, wiecej powoduje blad !!!
+// dla kazdego CONNECT musimy otrzymac CONNECT_ACK
+struct mqtt_connect 
+{
+    union mqtt_header header; // to co jest wyzej zdefiniowane
+    union {
+        unsigned char byte; // taka sama sytuacja jak wczesniejsza unia, jeden byte lub struct z bitefields
+        int reserved : 1;           // zawsze 0 (wymóg protokołu)
+        unsigned clean_session : 1; // czy broker ma czyścić poprzednią sesję
+        unsigned will : 1;          // czy klient definiuje Last Will
+        unsigned will_qos : 2;      // QoS wiadomości Last Will
+        unsigned will_retain : 1;   // czy Last Will ma być retain, tzn ze kazdy nowy subskrybent tego topicu od razu ją dostanie (wiadomosc LastWill)
+        unsigned password : 1;      // czy pole hasła jest obecne
+        unsigned username : 1;      // czy pole użytkownika jest obecne
+    } bits;
+
+    struct // dane do konfiguracji sesji
+    {
+        unsigned short keepalive;   // maksymalny czas bez komunikacji
+        unsigned char *client_id;   // unikalny identyfikator klienta
+        unsigned char *username;    // dane uwierzytelniania 
+        unsigned char *password;
+        unsigned char *will_topic;  // Last Will Message - to wiadomość, którą broker wysyła automatycznie, gdy klient rozłączy się nieprawidłowo
+        unsigned char *will_message;
+    } payload; 
+}; 
+
+struct mqtt_connect_ack
+{
+    union mqtt_header header;
+    union{
+        unsigned char byte;
+        struct 
+        {
+            unsigned session_present : 1; // czy istnieje poprzednia sesja klienta
+            unsigned reserved : 7;        // zawsze 0
+        } bits;
+    };
+
+    unsigned char return_code; // 0-polaczenie zaakceptowane, <1-5> - rozne bledy
+};
+
+struct mqtt_subscribe {
+    union mqtt_header header;
+    unsigned short pkt_id;          // Packet Identifier (wymagany dla SUBSCRIBE).
+    unsigned short tuples_len;      // liczba wpisów (topiców) w żądaniu subskrypcji.
+    struct {                        
+        unsigned short topic_len;   // długość nazwy topicu,
+        unsigned char *topic;       // topic jako string/bufor,
+        unsigned qos;               // żądany QoS dla tego topicu.
+    } *tuples;
+};
+
+struct mqtt_unsubscribe {
+    union mqtt_header header;
+    unsigned short pkt_id;
+    unsigned short tuples_len;
+    struct {
+        unsigned short topic_len;
+        unsigned char *topic;
+    } *tuples;
+};
+
+struct mqtt_suback {
+    union mqtt_header header;
+    unsigned short pkt_id;      // musi pasować do pkt_id z SUBSCRIBE.
+    unsigned short rcslen;      // liczba kodów zwrotnych (po jednym na każdy topic).
+    unsigned char *rcs;         // zwykle „przyznany QoS” albo informacja o błędzie dla danego topicu.
+};
+
+struct mqtt_publish {
+    union mqtt_header header;
+    unsigned short pkt_id;
+    unsigned short topiclen;
+    unsigned char *topic;       // topic wiadomosci
+    unsigned short payloadlen;  
+    unsigned char *payload;     // wlasciwa wiadomosc
+};
+
+struct mqtt_ack {               // Uniwersalny pakiet potwierdzeń oparty o sam pkt_id 
+    union mqtt_header header;   
+    unsigned short pkt_id;
+};
+
+// remaining ACK packets
+typedef struct mqtt_ack mqtt_puback;
+typedef struct mqtt_ack mqtt_pubrec;
+typedef struct mqtt_ack mqtt_pubrel;
+typedef struct mqtt_ack mqtt_pubcomp;
+typedef struct mqtt_ack mqtt_unsuback;
+typedef union mqtt_header mqtt_pingreq;
+typedef union mqtt_header mqtt_pingresp;
+typedef union mqtt_header mqtt_disconnect;
+
+// FINALLY, definiujemy generyczny MQTT packet jako unia 
+union mqtt_packet
+{
+    struct mqtt_ack ack;
+    union mqtt_header header;
+    struct mqtt_connect connect;
+    struct mqtt_connect_ack connect_ack;
+    struct mqtt_suback suback;
+    struct mqtt_publish publish;
+    struct mqtt_subscribe subscribe;
+    struct mqtt_unsubscribe unsubscribe;
+};
+
+// deklaracje funkcji z mqtt.c ktore beda w przyszlosci
+/* 
+int mqtt_encode_length(unsigned char *, size_t);
+unsigned long long mqtt_decode_length(const unsigned char **);
+int unpack_mqtt_packet(const unsigned char *, union mqtt_packet *);
+unsigned char *pack_mqtt_packet(const union mqtt_packet *, unsigned);
+
+union mqtt_header *mqtt_packet_header(unsigned char);
+struct mqtt_ack *mqtt_packet_ack(unsigned char , unsigned short);
+struct mqtt_connack *mqtt_packet_connack(unsigned char, unsigned char, unsigned char);
+struct mqtt_suback *mqtt_packet_suback(unsigned char, unsigned short,
+                                       unsigned char *, unsigned short);
+struct mqtt_publish *mqtt_packet_publish(unsigned char, unsigned short, size_t,
+                                         unsigned char *, size_t, unsigned char *);
+void mqtt_packet_release(union mqtt_packet *, unsigned);
 
 
+*/
 
 #endif // MQTT_H
