@@ -170,7 +170,6 @@ union mqtt_packet
 };
 
 // deklaracje funkcji z mqtt.c ktore beda w przyszlosci
-/* 
 int mqtt_encode_length(unsigned char *, size_t);
 unsigned long long mqtt_decode_length(const unsigned char **);
 int unpack_mqtt_packet(const unsigned char *, union mqtt_packet *);
@@ -186,6 +185,5 @@ struct mqtt_publish *mqtt_packet_publish(unsigned char, unsigned short, size_t,
 void mqtt_packet_release(union mqtt_packet *, unsigned);
 
 
-*/
 
 #endif // MQTT_H
