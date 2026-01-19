@@ -69,13 +69,16 @@ struct mqtt_connect
     union mqtt_header header; // to co jest wyzej zdefiniowane
     union {
         unsigned char byte; // taka sama sytuacja jak wczesniejsza unia, jeden byte lub struct z bitefields
-        int reserved : 1;           // zawsze 0 (wymóg protokołu)
-        unsigned clean_session : 1; // czy broker ma czyścić poprzednią sesję
-        unsigned will : 1;          // czy klient definiuje Last Will
-        unsigned will_qos : 2;      // QoS wiadomości Last Will
-        unsigned will_retain : 1;   // czy Last Will ma być retain, tzn ze kazdy nowy subskrybent tego topicu od razu ją dostanie (wiadomosc LastWill)
-        unsigned password : 1;      // czy pole hasła jest obecne
-        unsigned username : 1;      // czy pole użytkownika jest obecne
+        struct 
+        {
+            unsigned reserved : 1;           // zawsze 0 (wymóg protokołu)
+            unsigned clean_session : 1; // czy broker ma czyścić poprzednią sesję
+            unsigned will : 1;          // czy klient definiuje Last Will
+            unsigned will_qos : 2;      // QoS wiadomości Last Will
+            unsigned will_retain : 1;   // czy Last Will ma być retain, tzn ze kazdy nowy subskrybent tego topicu od razu ją dostanie (wiadomosc LastWill)
+            unsigned password : 1;      // czy pole hasła jest obecne
+            unsigned username : 1;      // czy pole użytkownika jest obecne
+        };     
     } bits;
 
     struct // dane do konfiguracji sesji

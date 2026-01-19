@@ -22,12 +22,68 @@
 #define MAXEVENTS 2000
 
 #define SA struct sockaddr 
+#define BACKLOG 100
 
 #define PORT 8888
 
 int setup_socket(void);
 
 
+//////////////////// RZECZY DO PLIKU NAGLOWKOWEGO, HEADER STRUKTUY ITD /////////////////// 
+
+enum qos_level
+{
+    AT_MOST_ONCE,
+    AT_LEAST_ONCE, // for future
+    EXACTLY_ONCE   // for future
+};
+
+union mqtt_header // pierwszy bajt naglowka 
+{
+    unsigned char byte;
+    struct
+    {
+        unsigned retain : 1; // czy ostatnia wiadomość ma być zapamiętana dla nowych subskrybentów
+        unsigned qos : 2;    // poziom QoS (0, 1, 2)
+        unsigned dup : 1;    // flaga ponownej transmisji
+        unsigned type : 4;   // typ pakietu (CONNECT, PUBLISH, itd.)
+    } bits;
+};
+
+struct mqtt_connect
+{
+    union mqtt_header header;
+    union 
+    {
+        unsigned char byte;
+        struct
+        {
+            unsigned reserved : 1;
+            unsigned will     : 1;
+            unsigned rfFuture : 6; // Reserved for future 
+        };
+    }bits;
+    
+    struct // dane do konfiguracji sesji
+    {
+        unsigned short keepalive;   // maksymalny czas bez komunikacji
+        unsigned char *client_id;   // unikalny identyfikator klienta
+        unsigned char *username;    // dane uwierzytelniania 
+        unsigned char *password;
+        unsigned char *will_topic;  // Last Will Message - to wiadomość, którą broker wysyła automatycznie, gdy klient rozłączy się nieprawidłowo
+        unsigned char *will_message;
+    } payload; 
+};
+
+
+
+
+
+
+
+
+
+////// KONIEC PLIKU NAGLOWKOWEGO ///////// 
 
 int main(int argc, char **argv)
 {
@@ -40,7 +96,7 @@ int main(int argc, char **argv)
     struct epoll_event events[MAXEVENTS];
     struct epoll_event ev;
 
-    if((listenfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0)
+    if((listenfd = socket(AF_INET6, SOCK_STREAM, 0)) < 0)
     {
         fprintf(stderr, "socket() error!: %s\n", strerror(errno));
         return -1;
@@ -58,6 +114,12 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    if((listen(listenfd, BACKLOG)) < 0)
+    {
+        fprintf(stderr, "listen() error!: %s\n", strerror(errno));
+        return -1;
+    }
+
     if((epollfd = epoll_create(MAXEVENTS))== -1)
     {
         fprintf(stderr, "epoll_create() error!: %s\n", strerror(errno));
@@ -71,6 +133,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "epoll_ctl() error!: %s\n", strerror(errno));
         return -1;
     }
+
     ///////////////////////////////////// koniec funkcji setup_socket()//////////////////// 
     printf("Waiting for client... \n");
     
@@ -88,28 +151,33 @@ int main(int argc, char **argv)
             if(events[i].data.fd == listenfd)
             {
                 peer_addr_len = sizeof(peer_addr);
-                n = recvfrom(listenfd, buff, MAXLINE, 0, (SA *)&peer_addr, &peer_addr_len);
+                connfd = accept(listenfd, (SA*)&peer_addr, peer_addr_len);
                 if(n < 0)
                 {
-                    fprintf(stderr, "recvfrom() error!: %s\n", strerror(errno));
+                    fprintf(stderr, "accept() error!: %s\n", strerror(errno));
                     continue;
                 }
 
-                char host[NI_MAXHOST], service[NI_MAXSERV]; // stae do funkcji getnameinfo(), czest standardowej bibliteka POSIX
-                int s = getnameinfo((SA* )&peer_addr, peer_addr_len, host,
-                                 NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICHOST);
-                
-                if (s == 0)
-			      printf("UDP: Received %ld bytes from %s:%s\n",
-				(long) n, host, service);
-                else
-                    fprintf(stderr, "getnameinfo: %s\n", gai_strerror(s));
-
-                if (sendto(listenfd, buff, n, 0, (SA *) &peer_addr,
-                                        peer_addr_len) != n)
-                    fprintf(stderr, "UDP Error sending response\n");
-
-                continue; 
+                currfd = events[i].data.fd;
+                if((n = read(currfd, buff, sizeof buff)) == -1) 
+                {
+                    // Closing the descriptor will make epoll remove it from the set of descriptors which are monitored.
+                    fprintf(stderr, "read() error!: %s\n", strerror(errno));
+                    close(currfd);
+                    continue;
+                }
+                printf("Received payload: %s", buff);
+                if(n == 0) {
+                    // The socket sent EOF. 
+                    close (currfd);
+                    continue;
+                }
+                printf(buff);
+                if( write(currfd, buff, n) == -1) {
+                    // Something went wrong.
+                    close(currfd);
+                    continue;
+                }
             }
         }
     }
