@@ -28,8 +28,14 @@ main(int argc, char *argv[])
 	socklen_t			len;
 	char				recvline[MAXLINE], str[INET6_ADDRSTRLEN+1];
 	time_t				ticks;
-	struct sockaddr_in	servaddr, peer_addr;
+	struct sockaddr_in	servaddr, localaddr, peer_addr;
 	char host[NI_MAXHOST], service[NI_MAXSERV];
+
+     if (argc != 2) {
+        fprintf(stderr, "Usage: %s <server-ip>\n", argv[0]);
+        fprintf(stderr, "Example: %s 127.0.0.1\n", argv[0]);
+        return 1;
+    }
 
     // Creating socket
 	if ( (sfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
@@ -37,15 +43,31 @@ main(int argc, char *argv[])
 		return 1;
 	}
 
-	bzero(&servaddr, sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr   = 0;
-	servaddr.sin_port   = htons(8888);	// My server port
+	bzero(&localaddr, sizeof(localaddr));
+	localaddr.sin_family = AF_INET;
+	localaddr.sin_addr.s_addr   = htonl(INADDR_ANY);
+	localaddr.sin_port   = htons(0);	// My port - os choosing
 
-	if ( bind( sfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0){
+	if ( bind( sfd, (struct sockaddr *) &localaddr, sizeof(localaddr)) < 0){
 		fprintf(stderr,"bind error : %s\n", strerror(errno));
 		return 1;
 	}
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_addr.s_addr   = 0;
+	servaddr.sin_port   = htons(8888);	// My server
+
+    // if ( bind( sfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0){
+	// 	fprintf(stderr,"bind error : %s\n", strerror(errno));
+	// 	return 1;
+	// }
+
+    if (inet_pton(AF_INET, argv[1], &servaddr.sin_addr) != 1) {
+        fprintf(stderr, "inet_pton error: invalid server IP: %s\n", argv[1]);
+        close(sfd);
+        return 1;
+    }
 
 	delay.tv_sec =6;  //opoznienie na gniezdzie
 	delay.tv_usec = 0; 
@@ -56,6 +78,14 @@ main(int argc, char *argv[])
 	}		
 		
 	for( i=0; i < 3; i++){
+        const char *msg = "hello";
+
+        if( (n = sendto(sfd, msg, strlen(msg), 0, (struct sockaddr *) &servaddr, sizeof(servaddr)) ) < 0 ){
+            fprintf(stderr, "sendto error : %s\n", strerror(errno));
+            close(sfd);
+            return 1;
+		}
+
 	        /* Read data from server */
 		fprintf(stderr, "Waiting for server ...\n");
 	
@@ -64,7 +94,8 @@ main(int argc, char *argv[])
 				&len) ) < 0 ){ 
 	
 			perror("recfrom error");
-			if( errno == (EAGAIN | EWOULDBLOCK)) {
+			// if( errno == (EAGAIN | EWOULDBLOCK)) {
+			if( errno == EAGAIN || errno == EWOULDBLOCK) {
 				printf("Timeout - no serwers\n");
 				exit(1);
 			}
@@ -74,6 +105,7 @@ main(int argc, char *argv[])
 			}
 		}
 	
+        // Print who replied
 		s = getnameinfo((struct sockaddr *) &peer_addr,
 						len, host, NI_MAXHOST,
 						service, NI_MAXSERV, NI_NUMERICSERV | NI_NUMERICHOST);
@@ -89,6 +121,6 @@ main(int argc, char *argv[])
 			exit(1);
 		}        
 	}
-		
+    close(sfd);
 	exit(EXIT_SUCCESS);
 }
