@@ -142,8 +142,8 @@ int main(int argc, char **argv)
         nready = epoll_wait(epollfd, events, MAXEVENTS, -1);
         if(nready == -1)
         {
-        fprintf(stderr, "epoll_wait() error!: %s\n", strerror(errno));
-        return -1;
+            fprintf(stderr, "epoll_wait() error!: %s\n", strerror(errno));
+            return -1;
         }
 
         for (int i = 0; i < nready; i++)
@@ -172,7 +172,6 @@ int main(int argc, char **argv)
                     close (currfd);
                     continue;
                 }
-                printf(buff);
                 if( write(currfd, buff, n) == -1) {
                     // Something went wrong.
                     close(currfd);

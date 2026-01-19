@@ -8,6 +8,13 @@ CMakeCache.txt
 cmake_install.cmake
 Makefile
 
+syl_broker/*.out
+syl_broker/*.exe
+syl_broker/*.0
+syl_broker/*.obj
+syl_broker/test
+syl_broker/broker
+
 # Executables
 *.out
 *.exe
