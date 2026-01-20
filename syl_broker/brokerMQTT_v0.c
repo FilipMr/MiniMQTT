@@ -83,7 +83,7 @@ struct mqtt_connect
 
 
 
-MQTTpacket packet = {0};
+MQTTpacket* packet = {0};
 
 
 
