@@ -14,6 +14,8 @@
 #define MAXLINE 1024
 #define SA      struct sockaddr
 
+char buff[MAXLINE];
+
 int main(int argc, char *argv[])
 {
     int         sockfd, n;
@@ -24,6 +26,7 @@ int main(int argc, char *argv[])
 	const char* client_id = "Filo *-* ";
 	const char* topic = "test/msg\n";
 	MQTTpacket fromServerdata;
+	cliAnswer cliAnswer;
 
 	// MQTTpacket* packet = (MQTTpacket*)malloc(sizeof(MQTTpacket));
 	// memset(packet, 0, sizeof(MQTTpacket));
@@ -62,29 +65,53 @@ int main(int argc, char *argv[])
 		return 1;
     }
 
-    // if ( write(sockfd, packet, sizeof(packet)) < 0) {
-    //     fprintf(stderr, "write error: %s\n", strerror(errno));
-    //     close(sockfd);
-    //     return 1;
-    // }
-	if ( send(sockfd, &packet, sizeof(packet), 0) < 0) {
-        fprintf(stderr, "write error: %s\n", strerror(errno));
-        // free(packet);
-		close(sockfd);
-        return 1;
+    // Odbiór wiadomości od serwera
+    n = recv(sockfd, buff, MAXLINE, 0);
+    if (n < 0) {
+        perror("recv failed");
+        close(sockfd);
+        exit(1);
     }
+    buff[n] = '\0';
+    printf("\n%s", buff);
 
 	// publishPacket(sockfd, msg, packet);
 
+	printf("Choose option: ");
+	scanf("%s", cliAnswer.answer);
+	if(strcmp(cliAnswer.answer, "p") == 0)
+	{
+		printf("Type topic: ");
+		scanf("%s", cliAnswer.topic);
 
-	n = recv(sockfd, &fromServerdata, sizeof(fromServerdata), 0);
-    if (n < 0)
-		fprintf(stderr,"recv error : %s\n", strerror(errno));
+		printf("Type your payload: ");
+		scanf("%s", cliAnswer.payload);
+	}
 
-	printf("from server, client_id: %s\n", fromServerdata.client_id);
-	printf("from server, msg_type : %d\n", fromServerdata.type);
-	printf("from server, payload : %s\n", fromServerdata.payload);
-	fprintf(stderr,"\nOK\n");
+
+	if(send(sockfd, &cliAnswer, sizeof(cliAnswer), 0) < 0)
+	{
+		perror("send failed");
+	}
+
+
+
+	// n = recv(sockfd, buff, sizeof(buff), 0);
+	// if(n < 0)
+	// {
+	// 	buff[n] = "\n";
+	// 	printf("%s", buff);
+	// }
+
+
+	// n = recv(sockfd, &fromServerdata, sizeof(fromServerdata), 0);
+    // if (n < 0)
+	// 	fprintf(stderr,"recv error : %s\n", strerror(errno));
+
+	// printf("from server, client_id: %s\n", fromServerdata.client_id);
+	// printf("from server, msg_type : %d\n", fromServerdata.type);
+	// printf("from server, payload : %s\n", fromServerdata.payload);
+	// fprintf(stderr,"\nOK\n");
 	fflush(stdout);
 
 
