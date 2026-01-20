@@ -204,10 +204,12 @@ int main(int argc, char **argv)
                 if(strcmp(cliAnswer.answer, "p") == 0)
                 {
                     printf("Client choose publish\n");
+                    // wywolujemy nasza funkcje publish 
                 }
                 else if (strcmp(cliAnswer.answer, "s") == 0)
                 {
                     printf("Client choose subscribe\n");
+                    // wywolujemy nasza funkcje odpowiedzialna za subscribe
                 }
                 else
                 {

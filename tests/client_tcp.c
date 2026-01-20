@@ -87,6 +87,11 @@ int main(int argc, char *argv[])
 		printf("Type your payload: ");
 		scanf("%s", cliAnswer.payload);
 	}
+	else if (strcmp(cliAnswer.answer, "s") == 0)
+	{
+		printf("Type topic: ");
+		scanf("%s", cliAnswer.topic);
+	}
 
 
 	if(send(sockfd, &cliAnswer, sizeof(cliAnswer), 0) < 0)
