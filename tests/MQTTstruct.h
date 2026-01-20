@@ -25,7 +25,7 @@ typedef struct
 {
     char client_id[MAXCLIENTS];
     packetType type;
-    char answer;
+    char answer[10];
     char topic[MAX_TOPIC_SIZE];
     char payload[MAX_PAYLOAD_SIZE];
 } cliAnswer;
