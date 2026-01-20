@@ -22,12 +22,16 @@ int main(int argc, char *argv[])
     int err;
     const char* msg = "Hello Sylvo\n";
 	const char* client_id = "Filo *-* ";
+	const char* topic = "test/msg\n";
+	MQTTpacket fromServerdata;
 
-	MQTTpacket* packet = (MQTTpacket*)malloc(sizeof(MQTTpacket));
-	memset(packet, 0, sizeof(MQTTpacket));
-	strncpy(packet->client_id, client_id, MAXCLIENTS);
-	packet->type = DATA_PACKET;
-	strncpy(packet->payload, msg, MAX_PAYLOAD_SIZE-1);
+	// MQTTpacket* packet = (MQTTpacket*)malloc(sizeof(MQTTpacket));
+	// memset(packet, 0, sizeof(MQTTpacket));
+	// strncpy(packet->client_id, client_id, MAXCLIENTS);
+	// packet->type = DATA_PACKET;
+	// strncpy(packet->payload, msg, MAX_PAYLOAD_SIZE-1);
+
+	MQTTpacket packet = {"Filo_ID\n", DATA_PACKET, "SIEMA ENIU\n"};
 
 
     if (argc != 2) {
@@ -63,9 +67,9 @@ int main(int argc, char *argv[])
     //     close(sockfd);
     //     return 1;
     // }
-	if ( write(sockfd, packet, sizeof(*packet)) < 0) {
+	if ( send(sockfd, &packet, sizeof(packet), 0) < 0) {
         fprintf(stderr, "write error: %s\n", strerror(errno));
-        free(packet);
+        // free(packet);
 		close(sockfd);
         return 1;
     }
@@ -73,23 +77,18 @@ int main(int argc, char *argv[])
 	// publishPacket(sockfd, msg, packet);
 
 
-
-	while ( (n = read(sockfd, recvline, MAXLINE)) > 0) {
-		recvline[n] = 0;	/* null terminate */
-		if (fputs(recvline, stdout) == EOF){
-			fprintf(stderr,"fputs error : %s\n", strerror(errno));
-			return 1;
-		}
-	}
-
+	n = recv(sockfd, &fromServerdata, sizeof(fromServerdata), 0);
     if (n < 0)
-		fprintf(stderr,"read error : %s\n", strerror(errno));
+		fprintf(stderr,"recv error : %s\n", strerror(errno));
 
-	fprintf(stderr,"OK\n");
+	printf("from server, client_id: %s\n", fromServerdata.client_id);
+	printf("from server, msg_type : %d\n", fromServerdata.type);
+	printf("from server, payload : %s\n", fromServerdata.payload);
+	fprintf(stderr,"\nOK\n");
 	fflush(stdout);
 
 
-	free(packet);
+	// free(packet);s
     close(sockfd);
 	exit(0);
 }
