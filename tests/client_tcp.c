@@ -9,6 +9,8 @@
 #include        <strings.h>
 #include        <unistd.h>
 
+#include "MQTTstruct.h"
+
 #define MAXLINE 1024
 #define SA      struct sockaddr
 
@@ -19,6 +21,13 @@ int main(int argc, char *argv[])
     char        recvline[MAXLINE+1];   
     int err;
     const char* msg = "Hello Sylvo\n";
+	const char* client_id = "Filo *-* ";
+
+	MQTTpacket packet = {0};
+	strncpy(packet.client_id, client_id, MAXCLIENTS);
+	packet.type = DATA_PACKET;
+	strncpy(packet.payload, msg, MAX_PAYLOAD_SIZE-1);
+
 
     if (argc != 2) {
         fprintf(stderr, "ERROR: usage: a.out <IPaddress>  \n");
@@ -48,7 +57,7 @@ int main(int argc, char *argv[])
 		return 1;
     }
 
-    if ( write(sockfd, msg, strlen(msg)) < 0) {
+    if ( write(sockfd, packet, strlen(packet)) < 0) {
         fprintf(stderr, "write error: %s\n", strerror(errno));
         close(sockfd);
         return 1;

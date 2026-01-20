@@ -14,12 +14,15 @@
 #include    <sys/epoll.h>
 #include    <unistd.h>
 
+#include "MQTTstruct.h"
+
 
 #define MAXLINE 1024
 #define SA struct sockaddr
 #define LISTENQ 2
 #define INFTIM -1
 #define MAXEVENTS 2000
+
 
 #define SA struct sockaddr 
 #define BACKLOG 100
@@ -37,6 +40,8 @@ enum qos_level
     AT_LEAST_ONCE, // for future
     EXACTLY_ONCE   // for future
 };
+
+
 
 union mqtt_header // pierwszy bajt naglowka 
 {
@@ -78,7 +83,7 @@ struct mqtt_connect
 
 
 
-
+MQTTpacket packet = {0};
 
 
 
@@ -159,20 +164,20 @@ int main(int argc, char **argv)
                 }
 
                 currfd = connfd;
-                if((n = read(currfd, buff, sizeof buff)) == -1) 
+                if((n = read(currfd, packet, sizeof packet)) == -1) 
                 {
                     // Closing the descriptor will make epoll remove it from the set of descriptors which are monitored.
                     fprintf(stderr, "read() error!: %s\n", strerror(errno));
                     close(currfd);
                     continue;
                 }
-                printf("Received payload: %s", buff);
+                printf("Received payload: %s", packet);
                 if(n == 0) {
                     // The socket sent EOF. 
                     close (currfd);
                     continue;
                 }
-                if( write(currfd, buff, n) == -1) {
+                if( write(currfd, packet, n) == -1) {
                     // Something went wrong.
                     close(currfd);
                     continue;
