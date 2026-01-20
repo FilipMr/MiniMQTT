@@ -57,11 +57,14 @@ int main(int argc, char *argv[])
 		return 1;
     }
 
-    if ( write(sockfd, packet, sizeof(packet)) < 0) {
-        fprintf(stderr, "write error: %s\n", strerror(errno));
-        close(sockfd);
-        return 1;
-    }
+    // if ( write(sockfd, packet, sizeof(packet)) < 0) {
+    //     fprintf(stderr, "write error: %s\n", strerror(errno));
+    //     close(sockfd);
+    //     return 1;
+    // }
+	publishPacket(sockfd, msg, packet);
+
+
 
 	while ( (n = read(sockfd, recvline, MAXLINE)) > 0) {
 		recvline[n] = 0;	/* null terminate */
