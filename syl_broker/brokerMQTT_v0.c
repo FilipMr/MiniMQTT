@@ -166,7 +166,7 @@ int main(int argc, char **argv)
                 }
 
                 currfd = connfd;
-                if((n = read(currfd, packet, sizeof packet)) == -1) 
+                if((n = read(currfd, packet, sizeof(*packet))) == -1) 
                 {
                     // Closing the descriptor will make epoll remove it from the set of descriptors which are monitored.
                     fprintf(stderr, "read() error!: %s\n", strerror(errno));
