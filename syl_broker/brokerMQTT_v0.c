@@ -82,8 +82,7 @@ struct mqtt_connect
 
 
 
-
-MQTTpacket* packet = {0};
+const char *data = "parowki\n";
 
 
 
@@ -100,6 +99,18 @@ int main(int argc, char **argv)
     char buff[MAXLINE];
     struct epoll_event events[MAXEVENTS];
     struct epoll_event ev;
+
+    MQTTpacket data;
+
+    // MQTTpacket *packet = malloc(sizeof(MQTTpacket));
+    // if (!packet) {
+    //     fprintf(stderr, "Memory allocation error\n");
+    //     return -1;
+    // }
+    // memset(packet, 0, sizeof(MQTTpacket));  
+
+    MQTTpacket packet = {"id_DEFAULT", DATA_PACKET, "payload_testowy"};
+
 
     if((listenfd = socket(AF_INET6, SOCK_STREAM, 0)) < 0)
     {
@@ -166,21 +177,24 @@ int main(int argc, char **argv)
                 }
 
                 currfd = connfd;
-                if((n = read(currfd, packet, sizeof(*packet))) == -1) 
+                if((n = recv(currfd, &data, sizeof(data), 0)) < 0) 
                 {
                     // Closing the descriptor will make epoll remove it from the set of descriptors which are monitored.
-                    fprintf(stderr, "read() error!: %s\n", strerror(errno));
+                    fprintf(stderr, "recv() error!: %s\n", strerror(errno));
                     close(currfd);
                     continue;
                 }
-                printf("Received payload: %s", packet->payload);
+                printf("Received Client_id: %s", data.client_id);
+                printf("Received payload: %s", data.payload);
+                printf("Received data type: %d", data.type);
                 if(n == 0) {
                     // The socket sent EOF. 
                     close (currfd);
                     continue;
                 }
-                if( write(currfd, packet, n) == -1) {
+                if( send(currfd, &packet, sizeof(packet), 0) < 0) {
                     // Something went wrong.
+                    fprintf(stderr, "send error: %s", strerror(errno));
                     close(currfd);
                     continue;
                 }
@@ -188,6 +202,7 @@ int main(int argc, char **argv)
         }
     }
 
+    // free(packet);
     close(listenfd);
     close(epollfd);
 
