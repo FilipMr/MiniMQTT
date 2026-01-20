@@ -96,9 +96,10 @@ int main(int argc, char **argv)
     struct sockaddr_in6 servaddr;
     struct sockaddr_storage peer_addr;
     socklen_t peer_addr_len;
-    char buff[MAXLINE];
+    char buff[MAXLINE], askBuff[MAXLINE];
     struct epoll_event events[MAXEVENTS];
     struct epoll_event ev;
+    cliAnswer cliAnswer;
 
     MQTTpacket data;
 
@@ -175,29 +176,99 @@ int main(int argc, char **argv)
                     fprintf(stderr, "accept() error!: %s\n", strerror(errno));
                     continue;
                 }
+                printf("Connected with client\n");
 
-                currfd = connfd;
-                if((n = recv(currfd, &data, sizeof(data), 0)) < 0) 
+                const char* welcomeMessage = "**************** MQTT BROKER **************** \n";
+                const char* welcomeMessage2 = "Publish payload on topic [press 'p'] \n";
+                const char* welcomeMessage3 = "Subscribe on topic [press 's'] \n";
+                const char* welcomeMessage4 = "\n";
+
+                // Połącz wszystkie wiadomości w jeden ciąg
+                char fullMessage[MAXLINE];
+                snprintf(fullMessage, MAXLINE, "%s%s%s%s", welcomeMessage, welcomeMessage2, welcomeMessage3, welcomeMessage4);
+
+                // Wyślij pełną wiadomość jedną komendą
+                if (send(connfd, fullMessage, strlen(fullMessage), 0) < 0) {
+                    fprintf(stderr, "send() error: %s\n", strerror(errno));
+                    continue;
+                }
+
+                printf("Waiting for client response about action... \r\n");
+    
+                if((n = recv(connfd, &cliAnswer, sizeof(cliAnswer), 0)) < 0) 
                 {
-                    // Closing the descriptor will make epoll remove it from the set of descriptors which are monitored.
-                    fprintf(stderr, "recv() error!: %s\n", strerror(errno));
-                    close(currfd);
+                    fprintf(stderr, "recv answer() error!: %s\n", strerror(errno));
                     continue;
                 }
-                printf("Received Client_id: %s", data.client_id);
-                printf("Received payload: %s", data.payload);
-                printf("Received data type: %d", data.type);
-                if(n == 0) {
-                    // The socket sent EOF. 
-                    close (currfd);
-                    continue;
+                printf("Client choosen option: %s \r\n", cliAnswer.answer);
+                if(strcmp(cliAnswer.answer, "p") == 0)
+                {
+                    printf("Client choose publish\n");
                 }
-                if( send(currfd, &packet, sizeof(packet), 0) < 0) {
-                    // Something went wrong.
-                    fprintf(stderr, "send error: %s", strerror(errno));
-                    close(currfd);
-                    continue;
+                else if (strcmp(cliAnswer.answer, "s") == 0)
+                {
+                    printf("Client choose subscribe\n");
                 }
+                else
+                {
+                    printf("Client choose wrong\n");
+                }
+                // // Sprawdzanie, co klient chce wykonać
+                // if(strcmp(buff, "p") == 0)
+                // {
+                //     printf("Klient wybrał publish.\n");
+                //       const char* askTopic = "Tell me in which topic, are you interested in: \n";
+                //     if(send(currfd, askTopic, sizeof(askTopic), 0) < 0)
+                //     {
+                //         fprintf(stderr, "send() error: %s", strerror(errno));
+                //     }
+
+                //     if((n = recv(currfd, buff, MAXLINE, 0)) < 0) 
+                //     {
+                //         fprintf(stderr, "recv() error!: %s\n", strerror(errno));
+                //         continue;
+                //     }
+                //     buff[n] = '\0'; 
+                //     printf("TOPIC Clienta: %s", buff);
+
+
+                //     // // Wyślij dane
+                //     // if(send(currfd, &packet, sizeof(packet), 0) < 0)
+                //     // {
+                //     //     fprintf(stderr, "send() error: %s\n", strerror(errno));
+                //     //     close(currfd);
+                //     //     continue;
+                //     // }S
+                // }
+                // // else if(strcmp(buff, "2") == 0)
+                // // {}
+                
+
+
+                // currfd = connfd;
+                // if((n = recv(currfd, &data, sizeof(data), 0)) < 0) 
+                // {
+                //     // Closing the descriptor will make epoll remove it from the set of descriptors which are monitored.
+                //     fprintf(stderr, "recv() error!: %s\n", strerror(errno));
+                //     close(currfd);
+                //     continue;
+                // }
+                // printf("Received Client_id: %s", data.client_id);
+                // printf("Received payload: %s", data.payload);
+                // printf("Received data type: %d", data.type);
+                // if(n == 0) {
+                //     // The socket sent EOF. 
+                //     close (currfd);
+                //     continue;
+                // }
+
+
+                // if( send(currfd, &packet, sizeof(packet), 0) < 0) {
+                //     // Something went wrong.c
+                //     fprintf(stderr, "send error: %s", strerror(errno));
+                //     close(currfd);
+                //     continue;
+                // }
             }
         }
     }
@@ -207,10 +278,4 @@ int main(int argc, char **argv)
     close(epollfd);
 
     return 0;
-}
-
-
-int setup_socket(void)
-{
-
-}
+}   
