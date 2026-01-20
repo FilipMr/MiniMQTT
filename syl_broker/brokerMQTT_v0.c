@@ -151,14 +151,14 @@ int main(int argc, char **argv)
             if(events[i].data.fd == listenfd)
             {
                 peer_addr_len = sizeof(peer_addr);
-                connfd = accept(listenfd, (SA*)&peer_addr, peer_addr_len);
-                if(n < 0)
+                connfd = accept(listenfd, (SA*)&peer_addr, &peer_addr_len);
+                if(connfd < 0)
                 {
                     fprintf(stderr, "accept() error!: %s\n", strerror(errno));
                     continue;
                 }
 
-                currfd = events[i].data.fd;
+                currfd = connfd;
                 if((n = read(currfd, buff, sizeof buff)) == -1) 
                 {
                     // Closing the descriptor will make epoll remove it from the set of descriptors which are monitored.
