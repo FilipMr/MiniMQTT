@@ -69,14 +69,14 @@ int main(int argc, char *argv[])
     n = recv(sockfd, buff, MAXLINE, 0);
     if (n < 0) {
         perror("recv failed");
-        close(sockfd);
         exit(1);
     }
     buff[n] = '\0';
     printf("\n%s", buff);
 
 	// publishPacket(sockfd, msg, packet);
-
+	snprintf(cliAnswer.client_id, sizeof(cliAnswer.client_id), "%s", "Filo");
+	cliAnswer.type = INFO_PACKET;
 	printf("Choose option: ");
 	scanf("%s", cliAnswer.answer);
 	if(strcmp(cliAnswer.answer, "p") == 0)
