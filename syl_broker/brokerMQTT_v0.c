@@ -106,6 +106,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "socket() error!: %s\n", strerror(errno));
         return -1;
     }
+    int one = 1;
+    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
     bzero(&servaddr, sizeof(servaddr));
 
@@ -171,7 +173,7 @@ int main(int argc, char **argv)
                     close(currfd);
                     continue;
                 }
-                printf("Received payload: %s", packet);
+                printf("Received payload: %s", packet->payload);
                 if(n == 0) {
                     // The socket sent EOF. 
                     close (currfd);

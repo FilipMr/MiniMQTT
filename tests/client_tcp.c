@@ -23,7 +23,8 @@ int main(int argc, char *argv[])
     const char* msg = "Hello Sylvo\n";
 	const char* client_id = "Filo *-* ";
 
-	MQTTpacket* packet = {0};
+	MQTTpacket* packet = (MQTTpacket*)malloc(sizeof(MQTTpacket));
+	memset(packet, 0, sizeof(MQTTpacket));
 	strncpy(packet->client_id, client_id, MAXCLIENTS);
 	packet->type = DATA_PACKET;
 	strncpy(packet->payload, msg, MAX_PAYLOAD_SIZE-1);
@@ -62,7 +63,14 @@ int main(int argc, char *argv[])
     //     close(sockfd);
     //     return 1;
     // }
-	publishPacket(sockfd, msg, packet);
+	if ( write(sockfd, packet, sizeof(*packet)) < 0) {
+        fprintf(stderr, "write error: %s\n", strerror(errno));
+        free(packet);
+		close(sockfd);
+        return 1;
+    }
+
+	// publishPacket(sockfd, msg, packet);
 
 
 
@@ -81,6 +89,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 
 
+	free(packet);
     close(sockfd);
 	exit(0);
 }
