@@ -18,6 +18,9 @@ typedef struct
 {
     char client_id[MAXCLIENTS];
     packetType type;
+    // add topic
+    // add something that helps to send payload to subscriber
+    // anything you need/want :) 
     char payload[MAX_PAYLOAD_SIZE];
 } MQTTpacket;
 
@@ -49,5 +52,6 @@ void publishPacket(int fd, const char* topic, MQTTpacket* packet)
     }
 
 }
+
 
 #endif
