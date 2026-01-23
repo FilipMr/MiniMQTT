@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     fromServer[n] = '\0';
     printf("\n%s", fromServer);
 
-	// uzupełnianie struktury aby wysłać na server rządanie 
+	// uzupełnianie struktury aby wysłać rządanie na server 
 	snprintf(cliAnswer.client_id, sizeof(cliAnswer.client_id), "%s", "Filo");
 	cliAnswer.type = INFO_PACKET;
 	printf("Choose option: ");
