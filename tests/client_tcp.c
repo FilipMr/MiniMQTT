@@ -14,7 +14,7 @@
 #define MAXLINE 1024
 #define SA      struct sockaddr
 
-char buff[MAXLINE];
+char fromServer[MAXLINE];
 
 int main(int argc, char *argv[])
 {
@@ -25,16 +25,8 @@ int main(int argc, char *argv[])
     const char* msg = "Hello Sylvo\n";
 	const char* client_id = "Filo *-* ";
 	const char* topic = "test/msg\n";
-	MQTTpacket fromServerdata;
-	cliAnswer cliAnswer;
-
-	// MQTTpacket* packet = (MQTTpacket*)malloc(sizeof(MQTTpacket));
-	// memset(packet, 0, sizeof(MQTTpacket));
-	// strncpy(packet->client_id, client_id, MAXCLIENTS);
-	// packet->type = DATA_PACKET;
-	// strncpy(packet->payload, msg, MAX_PAYLOAD_SIZE-1);
-
-	MQTTpacket packet = {"Filo_ID\n", DATA_PACKET, "SIEMA ENIU\n"};
+	MQTTpacket fromServerdata; // struct do odbioru danych z servera
+	cliAnswer cliAnswer; 	   // struct do wysylania danych na server
 
 
     if (argc != 2) {
@@ -42,7 +34,6 @@ int main(int argc, char *argv[])
 		return 1;
     }
 
-    // Creating socket
 	if ( (sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
 		fprintf(stderr,"socket error : %s\n", strerror(errno));
 		return 1;
@@ -60,21 +51,22 @@ int main(int argc, char *argv[])
 		return 1;
     }
 
-    if ( connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0) {
+    if ( connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0) 
+	{
         fprintf(stderr,"connect error : %s \n", strerror(errno));
 		return 1;
     }
 
-    // Odbiór wiadomości od serwera
-    n = recv(sockfd, buff, MAXLINE, 0);
+    // Odbiór wiadomości od serwera do buffora "fromServer"
+    n = recv(sockfd, fromServer, MAXLINE, 0);
     if (n < 0) {
         perror("recv failed");
         exit(1);
     }
-    buff[n] = '\0';
-    printf("\n%s", buff);
+    fromServer[n] = '\0';
+    printf("\n%s", fromServer);
 
-	// publishPacket(sockfd, msg, packet);
+	// uzupełnianie struktury aby wysłać na server rządanie 
 	snprintf(cliAnswer.client_id, sizeof(cliAnswer.client_id), "%s", "Filo");
 	cliAnswer.type = INFO_PACKET;
 	printf("Choose option: ");

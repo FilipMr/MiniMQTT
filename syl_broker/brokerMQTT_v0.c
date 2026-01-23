@@ -32,62 +32,8 @@
 int setup_socket(void);
 
 
-//////////////////// RZECZY DO PLIKU NAGLOWKOWEGO, HEADER STRUKTUY ITD /////////////////// 
-
-enum qos_level
-{
-    AT_MOST_ONCE,
-    AT_LEAST_ONCE, // for future
-    EXACTLY_ONCE   // for future
-};
-
-
-
-union mqtt_header // pierwszy bajt naglowka 
-{
-    unsigned char byte;
-    struct
-    {
-        unsigned retain : 1; // czy ostatnia wiadomość ma być zapamiętana dla nowych subskrybentów
-        unsigned qos : 2;    // poziom QoS (0, 1, 2)
-        unsigned dup : 1;    // flaga ponownej transmisji
-        unsigned type : 4;   // typ pakietu (CONNECT, PUBLISH, itd.)
-    } bits;
-};
-
-struct mqtt_connect
-{
-    union mqtt_header header;
-    union 
-    {
-        unsigned char byte;
-        struct
-        {
-            unsigned reserved : 1;
-            unsigned will     : 1;
-            unsigned rfFuture : 6; // Reserved for future 
-        };
-    }bits;
-    
-    struct // dane do konfiguracji sesji
-    {
-        unsigned short keepalive;   // maksymalny czas bez komunikacji
-        unsigned char *client_id;   // unikalny identyfikator klienta
-        unsigned char *username;    // dane uwierzytelniania 
-        unsigned char *password;
-        unsigned char *will_topic;  // Last Will Message - to wiadomość, którą broker wysyła automatycznie, gdy klient rozłączy się nieprawidłowo
-        unsigned char *will_message;
-    } payload; 
-};
-
-
-
 const char *data = "parowki\n";
 
-
-
-
-////// KONIEC PLIKU NAGLOWKOWEGO ///////// 
 
 int main(int argc, char **argv)
 {
@@ -103,13 +49,7 @@ int main(int argc, char **argv)
 
     MQTTpacket data;
 
-    // MQTTpacket *packet = malloc(sizeof(MQTTpacket));
-    // if (!packet) {
-    //     fprintf(stderr, "Memory allocation error\n");
-    //     return -1;
-    // }
-    // memset(packet, 0, sizeof(MQTTpacket));  
-
+    /// obiekt do testow, testy wysylania packietu do clienta 
     MQTTpacket packet = {"id_DEFAULT", DATA_PACKET, "payload_testowy"};
 
 
@@ -153,7 +93,6 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    ///////////////////////////////////// koniec funkcji setup_socket()//////////////////// 
     printf("Waiting for client... \n");
     
     while(1)
@@ -165,12 +104,12 @@ int main(int argc, char **argv)
             return -1;
         }
 
-        for (int i = 0; i < nready; i++)
+        for (int i = 0; i < nready; i++) /// for iterujący po tej liscie "aktywnych" deskryptorów w jadrze zapisanych przez epoll
         {
-            if(events[i].data.fd == listenfd)
+            if(events[i].data.fd == listenfd) // sprawdzamy czy deskryptor na tej liscie jest taki sam jak naszego gniazda nasluchujacego 
             {
                 peer_addr_len = sizeof(peer_addr);
-                connfd = accept(listenfd, (SA*)&peer_addr, &peer_addr_len);
+                connfd = accept(listenfd, (SA*)&peer_addr, &peer_addr_len);  /// dostajemy adres clienta
                 if(connfd < 0)
                 {
                     fprintf(stderr, "accept() error!: %s\n", strerror(errno));
@@ -178,16 +117,15 @@ int main(int argc, char **argv)
                 }
                 printf("Connected with client\n");
 
+                /// wiadomosc powitalna
                 const char* welcomeMessage = "**************** MQTT BROKER **************** \n";
                 const char* welcomeMessage2 = "Publish payload on topic [press 'p'] \n";
                 const char* welcomeMessage3 = "Subscribe on topic [press 's'] \n";
                 const char* welcomeMessage4 = "\n";
 
-                // Połącz wszystkie wiadomości w jeden ciąg
                 char fullMessage[MAXLINE];
                 snprintf(fullMessage, MAXLINE, "%s%s%s%s", welcomeMessage, welcomeMessage2, welcomeMessage3, welcomeMessage4);
 
-                // Wyślij pełną wiadomość jedną komendą
                 if (send(connfd, fullMessage, strlen(fullMessage), 0) < 0) {
                     fprintf(stderr, "send() error: %s\n", strerror(errno));
                     continue;
@@ -195,13 +133,13 @@ int main(int argc, char **argv)
 
                 printf("Waiting for client response about action... \r\n");
     
-                if((n = recv(connfd, &cliAnswer, sizeof(cliAnswer), 0)) < 0) 
+                if((n = recv(connfd, &cliAnswer, sizeof(cliAnswer), 0)) < 0) /// odczyt wyboru ktorego dokonał klient
                 {
                     fprintf(stderr, "recv answer() error!: %s\n", strerror(errno));
                     continue;
                 }
-                printf("Client choosen option: %s \r\n", cliAnswer.answer);
-                if(strcmp(cliAnswer.answer, "p") == 0)
+                printf("Client choosen option: %s \r\n", cliAnswer.answer); /// dla debugu, zeby widziec co nam przyszlo od klienta
+                if(strcmp(cliAnswer.answer, "p") == 0) /// logika wyboru co klient wybrał, trzeba napisać funkcje: PUBLISH() oraz SUBSCRIBE(), ktore beda obslugiwac wybor klienta
                 {
                     printf("Client choose publish\n");
                     // wywolujemy nasza funkcje publish 
@@ -215,67 +153,10 @@ int main(int argc, char **argv)
                 {
                     printf("Client choose wrong\n");
                 }
-                // // Sprawdzanie, co klient chce wykonać
-                // if(strcmp(buff, "p") == 0)
-                // {
-                //     printf("Klient wybrał publish.\n");
-                //       const char* askTopic = "Tell me in which topic, are you interested in: \n";
-                //     if(send(currfd, askTopic, sizeof(askTopic), 0) < 0)
-                //     {
-                //         fprintf(stderr, "send() error: %s", strerror(errno));
-                //     }
-
-                //     if((n = recv(currfd, buff, MAXLINE, 0)) < 0) 
-                //     {
-                //         fprintf(stderr, "recv() error!: %s\n", strerror(errno));
-                //         continue;
-                //     }
-                //     buff[n] = '\0'; 
-                //     printf("TOPIC Clienta: %s", buff);
-
-
-                //     // // Wyślij dane
-                //     // if(send(currfd, &packet, sizeof(packet), 0) < 0)
-                //     // {
-                //     //     fprintf(stderr, "send() error: %s\n", strerror(errno));
-                //     //     close(currfd);
-                //     //     continue;
-                //     // }S
-                // }
-                // // else if(strcmp(buff, "2") == 0)
-                // // {}
-                
-
-
-                // currfd = connfd;
-                // if((n = recv(currfd, &data, sizeof(data), 0)) < 0) 
-                // {
-                //     // Closing the descriptor will make epoll remove it from the set of descriptors which are monitored.
-                //     fprintf(stderr, "recv() error!: %s\n", strerror(errno));
-                //     close(currfd);
-                //     continue;
-                // }
-                // printf("Received Client_id: %s", data.client_id);
-                // printf("Received payload: %s", data.payload);
-                // printf("Received data type: %d", data.type);
-                // if(n == 0) {
-                //     // The socket sent EOF. 
-                //     close (currfd);
-                //     continue;
-                // }
-
-
-                // if( send(currfd, &packet, sizeof(packet), 0) < 0) {
-                //     // Something went wrong.c
-                //     fprintf(stderr, "send error: %s", strerror(errno));
-                //     close(currfd);
-                //     continue;
-                // }
             }
         }
     }
-
-    // free(packet);
+    
     close(listenfd);
     close(epollfd);
 
