@@ -1,20 +1,22 @@
-#include    <sys/types.h>
-#include    <sys/socket.h>
-#include    <sys/time.h>
-#include    <time.h>
-#include    <netinet/in.h>
-#include    <arpa/inet.h>
-#include    <errno.h>
-#include    <netdb.h>
-#include    <signal.h>
-#include    <stdio.h>
-#include    <stdlib.h>
-#include    <string.h>
-#include    <strings.h>   // bzero
-#include    <limits.h>
-#include    <sys/epoll.h>
-#include    <unistd.h>
-#include    <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <time.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netdb.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>   // bzero
+#include <limits.h>
+#include <sys/epoll.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+#include "cJSON.h"
 
 #include "MQTTstruct.h"
 
@@ -52,7 +54,7 @@ int main(int argc, char **argv)
     struct epoll_event ev;
 
     MQTTpacket data;
-    MQTTpacket packet = {"id_DEFAULT", DATA_PACKET, "payload_testowy"};
+    MQTTpacket packet = {"id_DEFAULT", DATA_PACKET, "topic_default", "payload_testowy"};
 
     /* tablica stanow dla fd */
     long maxfds = sysconf(_SC_OPEN_MAX);
@@ -223,16 +225,30 @@ int main(int argc, char **argv)
                     st[currfd].got += (size_t)n;
 
                     if (st[currfd].got == sizeof(cliAnswer)) {
-                        // mamy kompletna strukture -> mozemy dzialac
                         cliAnswer cliAnswer = st[currfd].msg;
 
-                        // (bezpieczenstwo) jesli answer to char[], dopilnuj '\0'
-                        #ifdef __GNUC__
-                        /* zakladamy, ze MQTTstruct.h ma pole answer jako tablica char */
-                        cliAnswer.answer[sizeof(cliAnswer.answer) - 1] = '\0';
-                        #endif
-
                         printf("Client option: %s\n", cliAnswer.answer);
+
+                        //zapisanie do pliku json
+                        cJSON *root = cJSON_CreateObject();
+                        cJSON_AddStringToObject(root, "client_id", cliAnswer.client_id);
+                        cJSON_AddNumberToObject(root, "type", (int)cliAnswer.type);
+                        cJSON_AddStringToObject(root, "answer", cliAnswer.answer);
+                        cJSON_AddStringToObject(root, "topic", cliAnswer.topic);
+                        cJSON_AddStringToObject(root, "payload", cliAnswer.payload);
+
+                        char *json = cJSON_Print(root);
+
+                        FILE *fp = fopen("data.json", "w");
+                        if (fp == NULL) {
+                            perror("Failed to open file");
+                        } else {
+                            fprintf(fp, "%s\n", json);
+                            fclose(fp);
+                        }
+
+                        free(json);
+                        cJSON_Delete(root);
 
                         if(strcmp(cliAnswer.answer, "p") == 0)
                         {
