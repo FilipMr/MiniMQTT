@@ -238,14 +238,31 @@ int main(int argc, char **argv)
                         cJSON_AddStringToObject(root, "payload", cliAnswer.payload);
 
                         char *json = cJSON_Print(root);
+                        char jsonFilename[256];           /* Dodalem zeby kazda struktura komunikacji byla w osobnym pliku
+                                                             nazwanym "{client_id}_{topic}.json */
 
-                        FILE *fp = fopen("data.json", "w");
+                        snprintf(
+                            jsonFilename,
+                            sizeof(jsonFilename),
+                            "%s_%s.json",
+                            cliAnswer.client_id,
+                            cliAnswer.topic
+                        );
+
+                        FILE *fp = fopen(jsonFilename, "w");
                         if (fp == NULL) {
                             perror("Failed to open file");
                         } else {
                             fprintf(fp, "%s\n", json);
                             fclose(fp);
                         }
+                        // FILE *fp = fopen("data.json", "w");
+                        // if (fp == NULL) {
+                        //     perror("Failed to open file");
+                        // } else {
+                        //     fprintf(fp, "%s\n", json);
+                        //     fclose(fp);
+                        // }
 
                         free(json);
                         cJSON_Delete(root);

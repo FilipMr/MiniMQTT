@@ -30,4 +30,5 @@ syl_broker/broker
 # Logs
 *.log
 tests/client
+src/server
 .DS_Store
