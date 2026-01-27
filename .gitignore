@@ -32,3 +32,6 @@ syl_broker/broker
 tests/client
 src/server
 .DS_Store
+
+# JSON
+*.json
