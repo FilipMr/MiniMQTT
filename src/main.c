@@ -31,6 +31,8 @@
 
 #define BACKLOG 100
 #define PORT 8888
+#define DISCOVERY_PORT 5000
+
 
 static volatile int connectedClients = 0;
 
@@ -55,14 +57,42 @@ static int set_nonblocking(int fd) {
 
 int main(int argc, char **argv)
 {
-    int listenfd, connfd;
+    int listenfd, connfd, multicastfd;
     int epollfd, nready, currfd;
+    int one = 1;
     struct sockaddr_in6 servaddr;
     struct sockaddr_storage peer_addr;
     socklen_t peer_addr_len;
     char buff[MAXLINE], askBuff[MAXLINE];
     struct epoll_event events[MAXEVENTS];
     struct epoll_event ev;
+
+    // Mulicast
+    if((multicastfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
+        perror("socket");
+    }
+
+    setsockopt(multicastfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    
+    struct sockaddr_in udp_bind;
+    memset(&udp_bind, 0, sizeof(udp_bind));
+    udp_bind.sin_family = AF_INET;
+    udp_bind.sin_addr.s_addr = htonl(INADDR_ANY);
+    udp_bind.sin_port = htons(DISCOVERY_PORT);
+
+    if (bind(multicastfd, (struct sockaddr*)&udp_bind, sizeof(udp_bind)) < 0) {
+        perror("bind udp");
+    }
+
+    struct ip_mreq mreq;
+    memset(&mreq, 0, sizeof(mreq));
+    mreq.imr_multiaddr.s_addr = inet_addr("239.1.2.3");      // your multicast group
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+
+    if (setsockopt(multicastfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
+        perror("IP_ADD_MEMBERSHIP");
+    }
 
     MQTTpacket data;
     MQTTpacket packet = {"id_DEFAULT", DATA_PACKET, "topic_default", "payload_testowy"};
@@ -115,6 +145,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    // register tcp to epoll
     ev.events = EPOLLIN;
     ev.data.fd = listenfd;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, listenfd, &ev) == -1)
@@ -125,6 +156,15 @@ int main(int argc, char **argv)
         free(st);
         return -1;
     }
+
+    // register udp to epoll
+    ev.events = EPOLLIN;
+    ev.data.fd = multicastfd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, multicastfd, &ev) == -1) {
+    perror("epoll_ctl add multicastfd");
+    exit(1);
+}
+
 
     printf("Waiting for client... \n");
     
@@ -140,6 +180,36 @@ int main(int argc, char **argv)
         for (int i = 0; i < nready; i++)
         {
             currfd = events[i].data.fd;
+
+            if (currfd == multicastfd) {
+                struct sockaddr_in cli;
+                socklen_t clen = sizeof(cli);
+                char msg[256];
+
+                ssize_t n = recvfrom(multicastfd, msg, sizeof(msg) - 1, 0,
+                                    (struct sockaddr*)&cli, &clen);
+                if (n < 0) {
+                    if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK)
+                        perror("recvfrom");
+                    continue;
+                }
+
+                msg[n] = '\0';
+                while (n > 0 && (msg[n-1] == '\n' || msg[n-1] == '\r')) msg[--n] = '\0';
+
+                if (strcmp(msg, "mqttclient") == 0) {
+                    // reply ONLY with TCP port; client uses source IP of this UDP reply
+                    char reply[32];
+                    snprintf(reply, sizeof(reply), "%d", PORT);
+
+                    if (sendto(multicastfd, reply, strlen(reply), 0,
+                            (struct sockaddr*)&cli, clen) < 0) {
+                        perror("sendto");
+                    }
+                }
+                continue;
+            }
+
 
             if(currfd == listenfd)
             {
