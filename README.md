@@ -12,6 +12,8 @@ This is a network programming project - basic implementation of MQTT in C.
 ```sh
 mkdir build
 cd build
-cmake ..
-make
-./simple_mqtt
+cmake -S . -B build
+cmake --build build
+./build/MiniMQTT
+./build/client_tcp
+
