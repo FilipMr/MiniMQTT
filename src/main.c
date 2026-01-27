@@ -39,7 +39,7 @@ static volatile int connectedClients = 0;
 typedef struct
 {
     int key;
-    char* value[100];
+    char value[100];
 } dictionary_t;
 dictionary_t clientBase[MAXCLIENTS_K_V];
 
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
         free(st);
         return -1;
     }
-    const int one = 1;
+
     setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
     bzero(&servaddr, sizeof(servaddr));
