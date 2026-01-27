@@ -67,28 +67,64 @@ int main(int argc, char *argv[])
     printf("\n%s", fromServer);
 
 	// uzupełnianie struktury aby wysłać rządanie na server 
-	snprintf(cliAnswer.client_id, sizeof(cliAnswer.client_id), "%s", "Filo");
+	snprintf(&cliAnswer.client_id, sizeof(cliAnswer.client_id), "%s", "Filo");
 	cliAnswer.type = INFO_PACKET;
 	printf("Choose option: ");
-	scanf("%s", cliAnswer.answer);
-	if(strcmp(cliAnswer.answer, "p") == 0)
+	scanf("%s", &cliAnswer.answer);
+	if(strcmp(&cliAnswer.answer, "p") == 0)
 	{
 		printf("Type topic: ");
-		scanf("%s", cliAnswer.topic);
+		scanf("%s", &cliAnswer.topic);
 
 		printf("Type your payload: ");
-		scanf("%s", cliAnswer.payload);
+		scanf("%s", &cliAnswer.payload);
 	}
-	else if (strcmp(cliAnswer.answer, "s") == 0)
+	else if (strcmp(&cliAnswer.answer, "s") == 0)
 	{
 		printf("Type topic: ");
-		scanf("%s", cliAnswer.topic);
+		scanf("%s", &cliAnswer.topic);
 	}
 
 
 	if(send(sockfd, &cliAnswer, sizeof(cliAnswer), 0) < 0)
 	{
 		perror("send failed");
+	}
+
+	while(1)
+	{
+		printf("\033[H\033[J");
+		fflush(stdout);
+		printf("\n//////////***--- MQTT CLIENT ---***////////// \n");
+		printf("Publish payload on topic [press 'p']\n");
+		printf("Subscribe on topic [press 's']\n");
+		printf("\nChoose option: ");
+		scanf("%s", &cliAnswer.answer);
+		if(strcmp(&cliAnswer.answer, "p") == 0)
+		{
+			printf("Type topic: ");
+			scanf("%s", &cliAnswer.topic);
+
+			printf("Type your payload: ");
+			scanf("%s", &cliAnswer.payload);
+		}
+		else if (strcmp(&cliAnswer.answer, "s") == 0)
+		{
+			printf("Type topic: ");
+			scanf("%s", &cliAnswer.topic);
+		}
+
+
+		if(send(sockfd, &cliAnswer, sizeof(cliAnswer), 0) < 0)
+		{
+			perror("send failed");
+		}
+		else
+		{
+			printf("\nRequest send succesfully! :)\n");
+		}
+		
+		sleep(3);
 	}
 
 
