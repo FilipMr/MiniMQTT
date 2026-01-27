@@ -1,18 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
+project(MiniMQTT VERSION 0.0.1 LANGUAGES C)
 
-project(MiniMQTT
-        VERSION 0.0.1)
-
-add_executable(${PROJECT_NAME}
+add_executable(MiniMQTT
     src/main.c
+    src/cJSON.c
 )
 
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        ${PROJECT_SOURCE_DIR}/inc
+add_executable(client_tcp
+    tests/client_tcp.c
+    src/cJSON.c
 )
 
-target_compile_options(${PROJECT_NAME}
-    PRIVATE
-        -Wall
-)
+target_include_directories(MiniMQTT PRIVATE ${PROJECT_SOURCE_DIR}/inc)
+target_include_directories(client_tcp PRIVATE ${PROJECT_SOURCE_DIR}/inc)
+
+target_compile_options(MiniMQTT PRIVATE -Wall)
+target_compile_options(client_tcp PRIVATE -Wall)
