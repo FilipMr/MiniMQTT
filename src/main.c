@@ -16,6 +16,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <sys/stat.h> // do sprawdzania plikow
+
 #include "cJSON.h"
 
 #include "MQTTstruct.h"
@@ -25,11 +27,19 @@
 #define LISTENQ 2
 #define INFTIM -1
 #define MAXEVENTS 2000
+#define MAXCLIENTS_K_V 200
 
 #define BACKLOG 100
 #define PORT 8888
 
-const char *data = "parowki\n";
+static volatile int connectedClients = 0;
+
+typedef struct
+{
+    int key;
+    char* value[100];
+} dictionary_t;
+dictionary_t clientBase[MAXCLIENTS_K_V];
 
 typedef struct {
     size_t got;                 // ile bajtow structa juz mamy
@@ -41,6 +51,7 @@ static int set_nonblocking(int fd) {
     if (flags == -1) return -1;
     return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
+
 
 int main(int argc, char **argv)
 {
@@ -71,7 +82,7 @@ int main(int argc, char **argv)
         free(st);
         return -1;
     }
-    int one = 1;
+    const int one = 1;
     setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
     bzero(&servaddr, sizeof(servaddr));
@@ -135,19 +146,25 @@ int main(int argc, char **argv)
                 peer_addr_len = sizeof(peer_addr);
 
                 connfd = accept(listenfd, (SA*)&peer_addr, &peer_addr_len);
+                connectedClients ++;
+                
+                
                 if(connfd < 0)
                 {
                     fprintf(stderr, "accept() error!: %s\n", strerror(errno));
+                    connectedClients--;
                     continue;
                 }
 
                 if (connfd >= maxfds) {
                     close(connfd);
+                    connectedClients--;
                     continue;
                 }
 
                 if (set_nonblocking(connfd) < 0) {
                     close(connfd);
+                    connectedClients--;
                     continue;
                 }
 
@@ -170,6 +187,7 @@ int main(int argc, char **argv)
                 if (send(connfd, fullMessage, strlen(fullMessage), 0) < 0) {
                     fprintf(stderr, "send() error: %s\n", strerror(errno));
                     close(connfd);
+                    connectedClients--;
                     continue;
                 }
 
@@ -178,112 +196,142 @@ int main(int argc, char **argv)
                 ev.data.fd = connfd;
                 if (epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1) {
                     close(connfd);
+                    connectedClients--;
                     continue;
                 }
 
                 printf("Waiting for client response about action... \r\n");
+                continue;
             }
             else
             {
                 // rozlaczenie (RDHUP/HUP/ERR)
                 if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
                     close(currfd);
+                    connectedClients--;
                     epoll_ctl(epollfd, EPOLL_CTL_DEL, currfd, NULL);
                     st[currfd].got = 0;
                     continue;
                 }
+            }
 
-                // odbior tylko wtedy, gdy epoll da znac ze klient jest gotowy do odczytu
-                while (1) {
-                    size_t need = sizeof(cliAnswer) - st[currfd].got;
-                    ssize_t n = recv(currfd,
-                                     (char*)&st[currfd].msg + st[currfd].got,
-                                     need,
-                                     0);
+            if (!(events[i].events & EPOLLIN)) {
+                continue;
+                }
 
-                    if (n == 0) {
-                        // klient rozlaczony
-                        close(currfd);
-                        epoll_ctl(epollfd, EPOLL_CTL_DEL, currfd, NULL);
-                        st[currfd].got = 0;
+            // odbior tylko wtedy, gdy epoll da znac ze klient jest gotowy do odczytu
+            while (1) {
+                //size_t need = sizeof(cliAnswer) - st[currfd].got;
+                ssize_t n = recv(currfd,
+                                &st[currfd].msg,
+                                sizeof(st[currfd].msg),
+                                0);
+
+                                printf("fd=%d recv=%zd got=%zu/%zu\n",
+                                   currfd, n, st[currfd].got, sizeof(cliAnswer));
+
+
+                if (n == 0) {
+                    // klient rozlaczony
+                    close(currfd);
+                    connectedClients--;
+                    epoll_ctl(epollfd, EPOLL_CTL_DEL, currfd, NULL);
+                    st[currfd].got = 0;
+                    break;
+                }
+
+                if (n < 0) {
+                    if (errno == EINTR) continue;
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        // nie ma wiecej danych teraz
                         break;
                     }
+                    // blad
+                    close(currfd);
+                    connectedClients--;
+                    epoll_ctl(epollfd, EPOLL_CTL_DEL, currfd, NULL);
+                    st[currfd].got = 0;
+                    break;
+                }
 
-                    if (n < 0) {
-                        if (errno == EINTR) continue;
-                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                            // nie ma wiecej danych teraz
-                            break;
-                        }
-                        // blad
-                        close(currfd);
-                        epoll_ctl(epollfd, EPOLL_CTL_DEL, currfd, NULL);
-                        st[currfd].got = 0;
-                        break;
+                st[currfd].got += (size_t)n;
+
+                if (st[currfd].got == sizeof(cliAnswer)) {
+                    cliAnswer cliAnswer = st[currfd].msg;
+
+                    printf("Client option: %s\n", cliAnswer.answer);
+
+                    //zapisanie do pliku json
+                    cJSON *root = cJSON_CreateObject();
+                    cJSON_AddStringToObject(root, "client_id", cliAnswer.client_id);
+                    cJSON_AddNumberToObject(root, "type", (int)cliAnswer.type);
+                    cJSON_AddStringToObject(root, "answer", cliAnswer.answer);
+                    cJSON_AddStringToObject(root, "topic", cliAnswer.topic);
+                    cJSON_AddStringToObject(root, "payload", cliAnswer.payload);
+                    cJSON_AddNumberToObject(root, "fd", currfd);
+
+                    char *json = cJSON_Print(root);
+                    char jsonFilename[256];           /* Dodalem zeby kazda struktura komunikacji byla w osobnym pliku
+                                                            nazwanym "pub/sub_{client_id}_{topic}.json */
+                    
+
+                    if(strcmp(cliAnswer.answer, "p") == 0)
+                    {
+                        printf("Client choose publish\n");
+
+                        snprintf( jsonFilename, sizeof(jsonFilename),
+                        "%s.json",cliAnswer.topic);
                     }
-
-                    st[currfd].got += (size_t)n;
-
-                    if (st[currfd].got == sizeof(cliAnswer)) {
-                        cliAnswer cliAnswer = st[currfd].msg;
-
-                        printf("Client option: %s\n", cliAnswer.answer);
-
-                        //zapisanie do pliku json
-                        cJSON *root = cJSON_CreateObject();
-                        cJSON_AddStringToObject(root, "client_id", cliAnswer.client_id);
-                        cJSON_AddNumberToObject(root, "type", (int)cliAnswer.type);
-                        cJSON_AddStringToObject(root, "answer", cliAnswer.answer);
-                        cJSON_AddStringToObject(root, "topic", cliAnswer.topic);
-                        cJSON_AddStringToObject(root, "payload", cliAnswer.payload);
-
-                        char *json = cJSON_Print(root);
-                        char jsonFilename[256];           /* Dodalem zeby kazda struktura komunikacji byla w osobnym pliku
-                                                             nazwanym "{client_id}_{topic}.json */
-
+                    else if (strcmp(cliAnswer.answer, "s") == 0)
+                    {
+                        printf("Client choose subscribe\n");
+                        clientBase[connectedClients-1].key = currfd;   /* zapis deskryptora klienta i topicu do naszej bazy danych subskrybcji klientow */
                         snprintf(
-                            jsonFilename,
-                            sizeof(jsonFilename),
-                            "%s_%s.json",
-                            cliAnswer.client_id,
-                            cliAnswer.topic
-                        );
+                            clientBase[connectedClients-1].value,
+                                    sizeof(clientBase[connectedClients-1].value),
+                                    "%s", cliAnswer.topic
+                                );
 
-                        FILE *fp = fopen(jsonFilename, "w");
-                        if (fp == NULL) {
-                            perror("Failed to open file");
-                        } else {
-                            fprintf(fp, "%s\n", json);
-                            fclose(fp);
-                        }
-                        // FILE *fp = fopen("data.json", "w");
-                        // if (fp == NULL) {
-                        //     perror("Failed to open file");
-                        // } else {
-                        //     fprintf(fp, "%s\n", json);
-                        //     fclose(fp);
-                        // }
 
-                        free(json);
-                        cJSON_Delete(root);
+                        printf("View from Client Database: key= %d, value=%s \n",
+                                clientBase[connectedClients-1].key,
+                                clientBase[connectedClients-1].value
+                            );
 
-                        if(strcmp(cliAnswer.answer, "p") == 0)
+                        for (int i = connectedClients-1 ; i >= 0; i--)
                         {
-                            printf("Client choose publish\n");
-                        }
-                        else if (strcmp(cliAnswer.answer, "s") == 0)
-                        {
-                            printf("Client choose subscribe\n");
-                        }
-                        else
-                        {
-                            printf("Client choose wrong\n");
-                        }
+                            printf("\nView from Client Database: key= %d, value=%s \n",
+                                clientBase[i].key,
+                                clientBase[i].value
+                            );
 
-                        // przygotuj sie na kolejna strukture od tego samego klienta
-                        st[currfd].got = 0;
-                        memset(&st[currfd].msg, 0, sizeof(st[currfd].msg));
+                        }
+                                    
+                        snprintf( jsonFilename, sizeof(jsonFilename),
+                        "%s.json", cliAnswer.client_id);
                     }
+                    else
+                    {
+                        printf("Client choose wrong\n");
+                        snprintf( jsonFilename, sizeof(jsonFilename),
+                        "FAIL_%s_%s.json", cliAnswer.client_id, cliAnswer.topic );
+                    }
+                
+
+                    FILE *fp = fopen(jsonFilename, "w");
+                    if (fp == NULL) {
+                        perror("Failed to open file");
+                    } else {
+                        fprintf(fp, "%s\n", json);
+                        fclose(fp);
+                    }
+    
+                    free(json);
+                    cJSON_Delete(root);
+
+                    // przygotuj sie na kolejna strukture od tego samego klienta
+                    st[currfd].got = 0;
+                    memset(&st[currfd].msg, 0, sizeof(st[currfd].msg));
                 }
             }
         }
