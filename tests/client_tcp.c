@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        // #define SYLWEK_USER
+        #define SYLWEK_USER
         /// potrzebne tylko dla LAPTOPA SYLWKA, JESLI JESTES KIMS INNYM TO ZAKOMENTUJ TEN FRAGMENT
         #ifdef SYLWEK_USER
         struct in_addr multaddr;
@@ -147,10 +147,13 @@ int main(int argc, char *argv[])
             return -1;
         }
         #endif
+        #ifndef SYLWEK_USER
+            printf("Nie dziala poniewaz nie zakomentowales odpowiedniej linijki, linijka okolo 140]\n");
+        #endif
         /////////////////////////////// end fragment do zakomentowania 
 
         struct timeval tv;
-        tv.tv_sec = 10;
+        tv.tv_sec = 5;
         tv.tv_usec = 0;
         if (setsockopt(udpfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
             fprintf(stderr, "setsockopt SO_RCVTIMEO error: %s\n", strerror(errno));
