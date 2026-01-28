@@ -98,6 +98,7 @@ int main(int argc, char **argv)
     struct ip_mreq mreq;
     memset(&mreq, 0, sizeof(mreq));
     mreq.imr_multiaddr.s_addr = inet_addr("239.1.2.3");      // your multicast group
+    
     // #define SYLWEK_USER /// ZAKOMENTUJ TA LINIJKE JESLI NIE JESTES SYLWKIEM :) 
     #ifndef SYLWEK_USER
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
