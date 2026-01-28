@@ -39,7 +39,8 @@ static volatile int connectedClients = 0;
 typedef struct
 {
     int key;
-    char value[100];
+    char value[BACKLOG];
+    char payload[MAXLINE];
 } dictionary_t;
 dictionary_t clientBase[MAXCLIENTS_K_V];
 
@@ -53,6 +54,15 @@ static int set_nonblocking(int fd) {
     if (flags == -1) return -1;
     return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
+
+#define MAX_TOPIC_LEN  100
+#define MAX_TOPIC_SUBS 100
+typedef struct
+{
+    char topicFromServer[MAX_TOPIC_LEN];
+    char payloadFromServer[MAXLINE];
+}topicPayloadFromServer;
+topicPayloadFromServer subsUpdateFromServer[MAX_TOPIC_SUBS];
 
 
 int main(int argc, char **argv)
@@ -88,8 +98,13 @@ int main(int argc, char **argv)
     struct ip_mreq mreq;
     memset(&mreq, 0, sizeof(mreq));
     mreq.imr_multiaddr.s_addr = inet_addr("239.1.2.3");      // your multicast group
-    // mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    // #define SYLWEK_USER /// ZAKOMENTUJ TA LINIJKE JESLI NIE JESTES SYLWKIEM :) 
+    #ifndef SYLWEK_USER
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    #endif
+    #ifdef SYLWEK_USER
     mreq.imr_interface.s_addr = inet_addr("192.168.56.101");
+    #endif
 
     if (setsockopt(multicastfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
         perror("IP_ADD_MEMBERSHIP");
@@ -366,6 +381,34 @@ int main(int argc, char **argv)
 
                         snprintf( jsonFilename, sizeof(jsonFilename),
                         "%s.json",cliAnswer.topic);
+                        for(int i = 0; i < MAXCLIENTS_K_V; i++)
+                        {
+                            if(strcmp(cliAnswer.topic, clientBase[i].value) == 0)
+                            {
+                                snprintf(clientBase[i].payload, sizeof(clientBase[i].payload),
+                                        "%s", cliAnswer.payload);
+                                
+                                snprintf(subsUpdateFromServer[i].topicFromServer,
+                                        sizeof(subsUpdateFromServer[i].topicFromServer),
+                                        "%s", clientBase[i].value);
+
+                                snprintf(subsUpdateFromServer[i].payloadFromServer,
+                                        sizeof(subsUpdateFromServer[i].payloadFromServer),
+                                        "%s", clientBase[i].payload);
+                                
+                                printf("Succesfully added payload to topic: %s\npayload: %s\n",
+                                        clientBase[i].value, clientBase[i].payload);
+                                
+                            
+                                int sockFdToSend = clientBase[i].key;
+                                if(send(sockFdToSend, &subsUpdateFromServer[i], sizeof(subsUpdateFromServer[i]), 0) < 0)
+                                {
+                                    fprintf(stderr, "\nFail to Send payload to subscriber\n");
+                                }
+                                sleep(1);
+                            }
+                        }
+
                     }
                     else if (strcmp(cliAnswer.answer, "s") == 0)
                     {
