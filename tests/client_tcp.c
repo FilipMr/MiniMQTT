@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        // #define SYLWEK_USER
+        #define SYLWEK_USER
         /// potrzebne tylko dla LAPTOPA SYLWKA, JESLI JESTES KIMS INNYM TO ZAKOMENTUJ TEN FRAGMENT
         #ifdef SYLWEK_USER
         struct in_addr multaddr;
@@ -253,8 +253,8 @@ int main(int argc, char *argv[])
 
 	while(1)
 	{
-		// printf("\033[H\033[J");
-		// fflush(stdout);
+		printf("\033[H\033[J");
+		fflush(stdout);
 		printf("\n//////////***--- MiniMQTT CLIENT ---***////////// \n");
 		
         printf("\nActually subscribed topics: \n");
