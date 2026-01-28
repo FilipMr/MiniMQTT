@@ -88,7 +88,8 @@ int main(int argc, char **argv)
     struct ip_mreq mreq;
     memset(&mreq, 0, sizeof(mreq));
     mreq.imr_multiaddr.s_addr = inet_addr("239.1.2.3");      // your multicast group
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    // mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    mreq.imr_interface.s_addr = inet_addr("192.168.56.101");
 
     if (setsockopt(multicastfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
         perror("IP_ADD_MEMBERSHIP");
@@ -245,10 +246,24 @@ int main(int argc, char **argv)
                 printf("Connected with client\n");
 
                 // wiadomosc powitalna
-                const char* welcomeMessage = "**************** MQTT BROKER **************** \n";
-                const char* welcomeMessage2 = "Publish payload on topic [press 'p'] \n";
-                const char* welcomeMessage3 = "Subscribe on topic [press 's'] \n";
-                const char* welcomeMessage4 = "\n";
+                const char* welcomeMessage = "------------ MiniMQTT BROKER ------------ \n";
+                const char* welcomeMessage2 =
+                                                "      █████╗  ██████╗  ██╗  ██╗ \n"
+                                                "     ██╔══██╗██╔════╝  ██║  ██║ \n"
+                                                "     ███████║██║  ███╗ ███████║ \n"
+                                                "     ██╔══██║██║   ██║ ██╔══██║ \n"
+                                                "     ██║  ██║╚██████╔╝ ██║  ██║ \n"
+                                                "     ╚═╝  ╚═╝ ╚═════╝  ╚═╝  ╚═╝ \n";
+
+                const char* welcomeMessage3 =
+                                                "\n"
+                                                " AGH UNIVERSITY OF SCIENCE AND TECHNOLOGY\n"
+                                                " Faculty of: Electronics and Telecomunications\n";
+                const char* welcomeMessage4 =
+                                                "\n"
+                                                "Project authors:\n"
+                                                "  - SYLWESTER SLUSARCZYK\n"
+                                                "  - FILIP MROZIK\n";
 
                 char fullMessage[MAXLINE];
                 snprintf(fullMessage, MAXLINE, "%s%s%s%s",
