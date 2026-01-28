@@ -41,19 +41,19 @@ typedef struct
 } topicPayloadFromServer;
 topicPayloadFromServer subscribedFromServer;
 
-static int recv_all(int fd, void *buf, size_t len) {
-    size_t got = 0;
-    while (got < len) {
-        ssize_t n = recv(fd, (char*)buf + got, len - got, 0);
-        if (n == 0) return 0;          // peer closed
-        if (n < 0) {
-            if (errno == EINTR) continue;
-            return -1;
-        }
-        got += (size_t)n;
-    }
-    return 1; 
-}
+// static int recv_all(int fd, void *buf, size_t len) {
+//     size_t got = 0;
+//     while (got < len) {
+//         ssize_t n = recv(fd, (char*)buf + got, len - got, 0);
+//         if (n == 0) return 0;          // peer closed
+//         if (n < 0) {
+//             if (errno == EINTR) continue;
+//             return -1;
+//         }
+//         got += (size_t)n;
+//     }
+//     return 1; 
+// }
 
 void* rx_thread(void* arg) {
 
@@ -70,13 +70,13 @@ void* rx_thread(void* arg) {
     printf("\n%s", fromServer);
 
     for (;;) {
-        int r = recv_all(sockfd, &pkt, sizeof(pkt));
+        int r = recv(sockfd, &pkt, sizeof(pkt), 0);
         if (r == 0) {
-            fprintf(stderr, "\n[RX] Server closed connection.\n");
+            fprintf(stderr, "\nServer closed connection.\n");
             break;
         }
         if (r < 0) {
-            fprintf(stderr, "\n[RX] recv error: %s\n", strerror(errno));
+            fprintf(stderr, "\nrecv error: %s\n", strerror(errno));
             break;
         }
 
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        #define SYLWEK_USER
+        // #define SYLWEK_USER
         /// potrzebne tylko dla LAPTOPA SYLWKA, JESLI JESTES KIMS INNYM TO ZAKOMENTUJ TEN FRAGMENT
         #ifdef SYLWEK_USER
         struct in_addr multaddr;
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
         }
         #endif
         #ifndef SYLWEK_USER
-            printf("Nie dziala poniewaz nie odkomentowales odpowiedniej linijki, linijka okolo 140]\n");
+            printf("Kochany Sylwku i twoja slaba pamieci\nNie dziala poniewaz nie odkomentowales odpowiedniej linijki, linijka okolo 140]\n");
         #endif
         /////////////////////////////// end fragment do zakomentowania 
 
@@ -253,8 +253,8 @@ int main(int argc, char *argv[])
 
 	while(1)
 	{
-		printf("\033[H\033[J");
-		fflush(stdout);
+		// printf("\033[H\033[J");
+		// fflush(stdout);
 		printf("\n//////////***--- MiniMQTT CLIENT ---***////////// \n");
 		
         printf("\nActually subscribed topics: \n");
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
 			scanf("%s", &cliAnswer.topic);
             numOfSubscibedTopics++;
             pthread_mutex_lock(&subs_mutex);
-            if (numOfSubscibedTopics > 0)
+            if (numOfSubscibedTopics > 0 && (sizeof(cliAnswer.topic) != 0))
             {
                 snprintf(subscribedTopics[numOfSubscibedTopics-1].topic,
                  sizeof(subscribedTopics[numOfSubscibedTopics-1].topic),
