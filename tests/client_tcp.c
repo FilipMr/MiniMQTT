@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
         }
         #endif
         #ifndef SYLWEK_USER
-            printf("Nie dziala poniewaz nie zakomentowales odpowiedniej linijki, linijka okolo 140]\n");
+            printf("Nie dziala poniewaz nie odkomentowales odpowiedniej linijki, linijka okolo 140]\n");
         #endif
         /////////////////////////////// end fragment do zakomentowania 
 
