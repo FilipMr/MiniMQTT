@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 	{
 		printf("\033[H\033[J");
 		fflush(stdout);
-		printf("\n//////////***--- MiniMQTT CLIENT ---***////////// \n");
+		printf("\n-------------- MiniMQTT CLIENT ---------------\n");
 		
         printf("\nActually subscribed topics: \n");
         pthread_mutex_lock(&subs_mutex);
