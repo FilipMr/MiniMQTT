@@ -134,7 +134,10 @@ int main(int argc, char *argv[])
             fprintf(stderr, "udp socket error: %s\n", strerror(errno));
             return 1;
         }
-        /// potrzebne tylko dla LAPTOPA SYLWKA, JESLI JESTES KIMS INNYM TO ZAKOMENTUJ TEN FRAGMENT 
+
+        // #define SYLWEK_USER
+        /// potrzebne tylko dla LAPTOPA SYLWKA, JESLI JESTES KIMS INNYM TO ZAKOMENTUJ TEN FRAGMENT
+        #ifdef SYLWEK_USER
         struct in_addr multaddr;
         multaddr.s_addr = inet_addr("192.168.56.102");
         if(setsockopt(udpfd, IPPROTO_IP, IP_MULTICAST_IF, &multaddr, sizeof(multaddr)) < 0)
@@ -143,6 +146,7 @@ int main(int argc, char *argv[])
             close(udpfd);
             return -1;
         }
+        #endif
         /////////////////////////////// end fragment do zakomentowania 
 
         struct timeval tv;
