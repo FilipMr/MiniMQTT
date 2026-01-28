@@ -9,6 +9,8 @@
 #include        <strings.h>
 #include        <unistd.h>
 
+#include <pthread.h>
+
 #include "MQTTstruct.h"
 
 #define MAXLINE 1024
@@ -17,9 +19,84 @@
 #define DEFAULT_TCP_PORT 8888
 #define MCAST_GRP "239.1.2.3"
 #define DISCOVERY_MSG "mqttclient"
-
+#define MAX_TOPIC_LEN 100
+#define MAX_TOPIC_SUBS 100
 
 char fromServer[MAXLINE];
+int numOfSubscibedTopics = 0;
+pthread_mutex_t subs_mutex = PTHREAD_MUTEX_INITIALIZER; // tworze mutex 
+
+typedef struct
+{
+    char topic[MAX_TOPIC_LEN];
+    char payload[MAXLINE];
+
+} dictionaryClient_t;
+dictionaryClient_t subscribedTopics[MAX_TOPIC_SUBS];
+
+typedef struct
+{   
+    char topicFromServer[MAX_TOPIC_LEN];
+    char payloadFromServer[MAXLINE];
+} topicPayloadFromServer;
+topicPayloadFromServer subscribedFromServer;
+
+static int recv_all(int fd, void *buf, size_t len) {
+    size_t got = 0;
+    while (got < len) {
+        ssize_t n = recv(fd, (char*)buf + got, len - got, 0);
+        if (n == 0) return 0;          // peer closed
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            return -1;
+        }
+        got += (size_t)n;
+    }
+    return 1; 
+}
+
+void* rx_thread(void* arg) {
+
+    int sockfd = *(int*)arg;
+    topicPayloadFromServer pkt;
+
+    // Odbiór wiadomości od serwera do buffora "fromServer"
+    int n = recv(sockfd, fromServer, MAXLINE, 0);
+    if (n < 0) {
+        perror("recv failed");
+        exit(1);
+    }
+    fromServer[n] = '\0';
+    printf("\n%s", fromServer);
+
+    for (;;) {
+        int r = recv_all(sockfd, &pkt, sizeof(pkt));
+        if (r == 0) {
+            fprintf(stderr, "\n[RX] Server closed connection.\n");
+            break;
+        }
+        if (r < 0) {
+            fprintf(stderr, "\n[RX] recv error: %s\n", strerror(errno));
+            break;
+        }
+
+        printf("\n[UPDATE FROM SUBSCRIBED TOPIC!]\n topic='%s'\npayload='%s'\n",
+               pkt.topicFromServer, pkt.payloadFromServer);
+        fflush(stdout);
+
+        snprintf(subscribedTopics[numOfSubscibedTopics-1].topic,
+         sizeof(subscribedTopics[numOfSubscibedTopics-1].topic),
+         "%s", pkt.topicFromServer);
+
+        snprintf(subscribedTopics[numOfSubscibedTopics-1].payload,
+                sizeof(subscribedTopics[numOfSubscibedTopics-1].payload),
+                "%s", pkt.payloadFromServer);
+    }
+
+
+    return NULL;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -57,9 +134,19 @@ int main(int argc, char *argv[])
             fprintf(stderr, "udp socket error: %s\n", strerror(errno));
             return 1;
         }
+        /// potrzebne tylko dla LAPTOPA SYLWKA, JESLI JESTES KIMS INNYM TO ZAKOMENTUJ TEN FRAGMENT 
+        struct in_addr multaddr;
+        multaddr.s_addr = inet_addr("192.168.56.102");
+        if(setsockopt(udpfd, IPPROTO_IP, IP_MULTICAST_IF, &multaddr, sizeof(multaddr)) < 0)
+        {
+            perror("setsockopt IP_MULTICAST_IF");
+            close(udpfd);
+            return -1;
+        }
+        /////////////////////////////// end fragment do zakomentowania 
 
         struct timeval tv;
-        tv.tv_sec = 2;
+        tv.tv_sec = 10;
         tv.tv_usec = 0;
         if (setsockopt(udpfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
             fprintf(stderr, "setsockopt SO_RCVTIMEO error: %s\n", strerror(errno));
@@ -83,7 +170,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        n = recvfrom(udpfd, reply_buf, sizeof(reply_buf) - 1, 0,
+        n = recvfrom(udpfd, reply_buf, sizeof(reply_buf), 0,
                      (SA *)&reply_addr, &reply_len);
         if (n < 0) {
             fprintf(stderr, "recvfrom discovery error: %s\n", strerror(errno));
@@ -132,46 +219,49 @@ int main(int argc, char *argv[])
 		return 1;
     }
 
-    // Odbiór wiadomości od serwera do buffora "fromServer"
-    n = recv(sockfd, fromServer, MAXLINE, 0);
-    if (n < 0) {
-        perror("recv failed");
-        exit(1);
+    pthread_t tid;
+    pthread_create(&tid, NULL, rx_thread, &sockfd);
+    pthread_detach(tid);
+
+    pthread_mutex_lock(&subs_mutex);
+    /* sekcja krytyczna */
+    for (int i = 0; i < MAX_TOPIC_SUBS; ++i) 
+    {
+        snprintf(subscribedTopics[i].topic,
+                sizeof(subscribedTopics[i].topic),
+                "default");
+
+        snprintf(subscribedTopics[i].payload,
+                sizeof(subscribedTopics[i].payload),
+                "nothing yet *-*");
     }
-    fromServer[n] = '\0';
-    printf("\n%s", fromServer);
+    pthread_mutex_unlock(&subs_mutex);
 
 	// uzupełnianie struktury aby wysłać rządanie na server 
 	snprintf(&cliAnswer.client_id, sizeof(cliAnswer.client_id), "%s", "Filo");
 	cliAnswer.type = INFO_PACKET;
-	printf("Choose option: ");
-	scanf("%s", &cliAnswer.answer);
-	if(strcmp(&cliAnswer.answer, "p") == 0)
-	{
-		printf("Type topic: ");
-		scanf("%s", &cliAnswer.topic);
-
-		printf("Type your payload: ");
-		scanf("%s", &cliAnswer.payload);
-	}
-	else if (strcmp(&cliAnswer.answer, "s") == 0)
-	{
-		printf("Type topic: ");
-		scanf("%s", &cliAnswer.topic);
-	}
-
-
-	if(send(sockfd, &cliAnswer, sizeof(cliAnswer), 0) < 0)
-	{
-		perror("send failed");
-	}
+    sleep(1);
+    printf("Press any key to continue...");
+    getchar();
 
 	while(1)
 	{
 		printf("\033[H\033[J");
 		fflush(stdout);
-		printf("\n//////////***--- MQTT CLIENT ---***////////// \n");
-		printf("Publish payload on topic [press 'p']\n");
+		printf("\n//////////***--- MiniMQTT CLIENT ---***////////// \n");
+		
+        printf("\nActually subscribed topics: \n");
+        pthread_mutex_lock(&subs_mutex);
+        if(numOfSubscibedTopics > 0)
+        {
+            for(int i = numOfSubscibedTopics; i > 0; i--)
+            {
+                printf("%s ---> %s\n",subscribedTopics[i-1].topic, subscribedTopics[i-1].payload);
+            }
+        }
+        pthread_mutex_unlock(&subs_mutex);
+        
+        printf("\nPublish payload on topic [press 'p']\n");
 		printf("Subscribe on topic [press 's']\n");
 		printf("\nChoose option: ");
 		scanf("%s", &cliAnswer.answer);
@@ -187,8 +277,16 @@ int main(int argc, char *argv[])
 		{
 			printf("Type topic: ");
 			scanf("%s", &cliAnswer.topic);
+            numOfSubscibedTopics++;
+            pthread_mutex_lock(&subs_mutex);
+            if (numOfSubscibedTopics > 0)
+            {
+                snprintf(subscribedTopics[numOfSubscibedTopics-1].topic,
+                 sizeof(subscribedTopics[numOfSubscibedTopics-1].topic),
+                "%s", cliAnswer.topic);
+            }
+            pthread_mutex_unlock(&subs_mutex);
 		}
-
 
 		if(send(sockfd, &cliAnswer, sizeof(cliAnswer), 0) < 0)
 		{
@@ -223,7 +321,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 
 
-	// free(packet);s
+	// free(packet);
     close(sockfd);
 	exit(0);
 }
