@@ -7,7 +7,7 @@ add_executable(MiniMQTT
 )
 
 add_executable(client_tcp
-    tests/client_tcp.c
+    src/client_tcp.c
     src/cJSON.c
 )
 
