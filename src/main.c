@@ -18,8 +18,6 @@
 
 #include <sys/stat.h> // do sprawdzania plikow
 
-#include "cJSON.h"
-
 #include "MQTTstruct.h"
 
 #define MAXLINE 1024
@@ -407,27 +405,11 @@ int main(int argc, char **argv)
                     cliAnswer cliAnswer = st[currfd].msg;
 
                     printf("Client option: %s\n", cliAnswer.answer);
-
-                    //zapisanie do pliku json
-                    cJSON *root = cJSON_CreateObject();
-                    cJSON_AddStringToObject(root, "client_id", cliAnswer.client_id);
-                    cJSON_AddNumberToObject(root, "type", (int)cliAnswer.type);
-                    cJSON_AddStringToObject(root, "answer", cliAnswer.answer);
-                    cJSON_AddStringToObject(root, "topic", cliAnswer.topic);
-                    cJSON_AddStringToObject(root, "payload", cliAnswer.payload);
-                    cJSON_AddNumberToObject(root, "fd", currfd);
-
-                    char *json = cJSON_Print(root);
-                    char jsonFilename[256];           /* Dodalem zeby kazda struktura komunikacji byla w osobnym pliku
-                                                            nazwanym "pub/sub_{client_id}_{topic}.json */
                     
-
                     if(strcmp(cliAnswer.answer, "p") == 0)
                     {
                         printf("Client choose publish\n");
 
-                        snprintf( jsonFilename, sizeof(jsonFilename),
-                        "%s.json",cliAnswer.topic);
                         for(int i = 0; i < MAXCLIENTS_K_V; i++)
                         {
                             if(strcmp(cliAnswer.topic, clientBase[i].value) == 0)
@@ -481,28 +463,12 @@ int main(int argc, char **argv)
                             );
 
                         }
-                                    
-                        snprintf( jsonFilename, sizeof(jsonFilename),
-                        "%s.json", cliAnswer.client_id);
+                    
                     }
                     else
                     {
                         printf("Client choose wrong\n");
-                        snprintf( jsonFilename, sizeof(jsonFilename),
-                        "FAIL_%s_%s.json", cliAnswer.client_id, cliAnswer.topic );
                     }
-                
-
-                    FILE *fp = fopen(jsonFilename, "w");
-                    if (fp == NULL) {
-                        perror("Failed to open file");
-                    } else {
-                        fprintf(fp, "%s\n", json);
-                        fclose(fp);
-                    }
-    
-                    free(json);
-                    cJSON_Delete(root);
 
                     // przygotuj sie na kolejna strukture od tego samego klienta
                     st[currfd].got = 0;
