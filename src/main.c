@@ -88,7 +88,7 @@ int demonize() {
         _exit(0); // Ponowne rozdzielenie aby odlaczyc od terminala
     }
 
-    // chdir("/"); // zmien folder
+    chdir("/"); // zmien folder
 
     // Zamkniecie deskryptorow pliku
 	long maxfd = sysconf(_SC_OPEN_MAX);
