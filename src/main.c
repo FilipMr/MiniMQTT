@@ -65,6 +65,53 @@ typedef struct
 topicPayloadFromServer subsUpdateFromServer[MAX_TOPIC_SUBS];
 
 
+// Demonizacja procesu
+int demonize() {
+    int i;
+    pid_t pid;
+
+    if ((pid = fork()) < 0) {
+        return (-1);
+    }
+    else if (pid) {
+        _exit(0); // Zakoncz proces rodzica
+    }
+
+    if (setsid() < 0) {
+        return (-1); // Przejmij sesje
+    }
+
+    signal(SIGHUP, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
+
+    if ((pid = fork()) < 0) {
+        return (-1);
+    }
+    else if (pid) {
+        _exit(0); // Ponowne rozdzielenie aby odlaczyc od terminala
+    }
+
+    // chdir("/"); // zmien folder
+
+    // Zamkniecie deskryptorow pliku
+	long maxfd = sysconf(_SC_OPEN_MAX);
+    if (maxfd < 0) maxfd = 1024;
+    for (long i = 0; i < maxfd; i++) close((int)i);
+
+
+	// Przekieruj do /dev/null
+	open("/dev/null", O_RDONLY);
+	open("/dev/null", O_RDWR);
+	open("/dev/null", O_RDWR);
+
+	// openlog(pname, LOG_PID, facility);
+	
+	// setuid(uid); // zmiana uzytkownika
+
+    return (0);
+}
+
+
 int main(int argc, char **argv)
 {
     int listenfd, connfd, multicastfd;
@@ -76,6 +123,10 @@ int main(int argc, char **argv)
     char buff[MAXLINE], askBuff[MAXLINE];
     struct epoll_event events[MAXEVENTS];
     struct epoll_event ev;
+
+    if (demonize() < 0) {
+        perror("daemon");
+    }
 
     // Mulicast
     if((multicastfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
