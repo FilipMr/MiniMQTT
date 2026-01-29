@@ -67,7 +67,6 @@ topicPayloadFromServer subsUpdateFromServer[MAX_TOPIC_SUBS];
 
 // Demonizacja procesu
 int demonize() {
-    int i;
     pid_t pid;
 
     if ((pid = fork()) < 0) {
@@ -120,7 +119,6 @@ int main(int argc, char **argv)
     struct sockaddr_in6 servaddr;
     struct sockaddr_storage peer_addr;
     socklen_t peer_addr_len;
-    char buff[MAXLINE], askBuff[MAXLINE];
     struct epoll_event events[MAXEVENTS];
     struct epoll_event ev;
 
@@ -161,9 +159,6 @@ int main(int argc, char **argv)
     if (setsockopt(multicastfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
         perror("IP_ADD_MEMBERSHIP");
     }
-
-    MQTTpacket data;
-    MQTTpacket packet = {"id_DEFAULT", DATA_PACKET, "topic_default", "payload_testowy"};
 
     /* tablica stanow dla fd */
     long maxfds = sysconf(_SC_OPEN_MAX);
