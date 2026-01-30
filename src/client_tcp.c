@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        // #define SYLWEK_USER
+        #define SYLWEK_USER
         /// potrzebne tylko dla LAPTOPA SYLWKA, JESLI JESTES KIMS INNYM TO ZAKOMENTUJ TEN FRAGMENT
         #ifdef SYLWEK_USER
         struct in_addr multaddr;
@@ -231,7 +231,6 @@ int main(int argc, char *argv[])
     pthread_detach(tid);
 
     pthread_mutex_lock(&subs_mutex);
-    /* sekcja krytyczna */
     for (int i = 0; i < MAX_TOPIC_SUBS; ++i) 
     {
         snprintf(subscribedTopics[i].topic,
@@ -306,29 +305,8 @@ int main(int argc, char *argv[])
 		
 		sleep(3);
 	}
-
-
-
-	// n = recv(sockfd, buff, sizeof(buff), 0);
-	// if(n < 0)
-	// {
-	// 	buff[n] = "\n";
-	// 	printf("%s", buff);
-	// }
-
-
-	// n = recv(sockfd, &fromServerdata, sizeof(fromServerdata), 0);
-    // if (n < 0)
-	// 	fprintf(stderr,"recv error : %s\n", strerror(errno));
-
-	// printf("from server, client_id: %s\n", fromServerdata.client_id);
-	// printf("from server, msg_type : %d\n", fromServerdata.type);
-	// printf("from server, payload : %s\n", fromServerdata.payload);
-	// fprintf(stderr,"\nOK\n");
 	fflush(stdout);
 
-
-	// free(packet);
     close(sockfd);
 	exit(0);
 }
