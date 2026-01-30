@@ -41,24 +41,11 @@ typedef struct
 } topicPayloadFromServer;
 topicPayloadFromServer subscribedFromServer;
 
-// static int recv_all(int fd, void *buf, size_t len) {
-//     size_t got = 0;
-//     while (got < len) {
-//         ssize_t n = recv(fd, (char*)buf + got, len - got, 0);
-//         if (n == 0) return 0;          // peer closed
-//         if (n < 0) {
-//             if (errno == EINTR) continue;
-//             return -1;
-//         }
-//         got += (size_t)n;
-//     }
-//     return 1; 
-// }
-
 void* rx_thread(void* arg) {
 
     int sockfd = *(int*)arg;
     topicPayloadFromServer pkt;
+    int isUpdate = 0;
 
     // Odbiór wiadomości od serwera do buffora "fromServer"
     int n = recv(sockfd, fromServer, MAXLINE, 0);
@@ -66,6 +53,7 @@ void* rx_thread(void* arg) {
         perror("recv failed");
         exit(1);
     }
+
     fromServer[n] = '\0';
     printf("\n%s", fromServer);
 
@@ -79,6 +67,7 @@ void* rx_thread(void* arg) {
             fprintf(stderr, "\nrecv error: %s\n", strerror(errno));
             break;
         }
+        isUpdate = 1;
 
         printf("\n[UPDATE FROM SUBSCRIBED TOPIC!]\n topic='%s'\npayload='%s'\n",
                pkt.topicFromServer, pkt.payloadFromServer);
@@ -91,6 +80,30 @@ void* rx_thread(void* arg) {
         snprintf(subscribedTopics[numOfSubscibedTopics-1].payload,
                 sizeof(subscribedTopics[numOfSubscibedTopics-1].payload),
                 "%s", pkt.payloadFromServer);
+
+        sleep(2);
+
+        if(isUpdate)
+        {
+            printf("\033[H\033[J");
+            fflush(stdout);
+            printf("\n-------------- MiniMQTT CLIENT ---------------\n");
+            
+            printf("\nActually subscribed topics: \n");
+            if(numOfSubscibedTopics > 0)
+            {
+                for(int i = numOfSubscibedTopics; i > 0; i--)
+                {
+                    printf("%s ---> %s\n",subscribedTopics[i-1].topic, subscribedTopics[i-1].payload);
+                }
+            }
+
+            printf("\nPublish payload on topic [press 'p']\n");
+            printf("Subscribe on topic [press 's']\n");
+            printf("\nChoose option: ");
+
+            isUpdate = 0;
+        }
     }
 
 
