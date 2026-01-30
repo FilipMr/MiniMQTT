@@ -21,6 +21,7 @@
 #define DISCOVERY_MSG "mqttclient"
 #define MAX_TOPIC_LEN 100
 #define MAX_TOPIC_SUBS 100
+int topicAlreadyExist = 0;
 
 char fromServer[MAXLINE];
 int numOfSubscibedTopics = 0;
@@ -291,25 +292,46 @@ int main(int argc, char *argv[])
 		{
 			printf("Type topic: ");
 			scanf("%s", cliAnswer.topic);
-            numOfSubscibedTopics++;
-            pthread_mutex_lock(&subs_mutex);
-            if (numOfSubscibedTopics > 0 && (sizeof(cliAnswer.topic) != 0))
+            
+            for(int i = 0; i < MAX_TOPIC_SUBS; i++)
             {
-                snprintf(subscribedTopics[numOfSubscibedTopics-1].topic,
-                 sizeof(subscribedTopics[numOfSubscibedTopics-1].topic),
-                "%s", cliAnswer.topic);
+                if(strcmp(cliAnswer.topic, subscribedTopics[i].topic) == 0)
+                {
+                    printf("\nThis topic is already subscribed\n");
+                    topicAlreadyExist++;
+                    break;
+                }
             }
-            pthread_mutex_unlock(&subs_mutex);
+            if (topicAlreadyExist == 0)
+            {
+                numOfSubscibedTopics++;
+                pthread_mutex_lock(&subs_mutex);
+                if (numOfSubscibedTopics > 0 && (sizeof(cliAnswer.topic) != 0))
+                {
+                    snprintf(subscribedTopics[numOfSubscibedTopics-1].topic,
+                    sizeof(subscribedTopics[numOfSubscibedTopics-1].topic),
+                    "%s", cliAnswer.topic);
+                }
+                pthread_mutex_unlock(&subs_mutex);
+            }
 		}
 
-		if(send(sockfd, &cliAnswer, sizeof(cliAnswer), 0) < 0)
-		{
-			perror("send failed");
-		}
-		else
-		{
-			printf("\nRequest send succesfully! :)\n");
-		}
+        if(topicAlreadyExist > 0)
+        {
+            topicAlreadyExist = 0;
+        }
+        else
+        {
+            if(send(sockfd, &cliAnswer, sizeof(cliAnswer), 0) < 0)
+            {
+                perror("send failed");
+            }
+            else
+            {
+                printf("\nRequest send succesfully! :)\n");
+            }
+        }
+		
 		
 		sleep(3);
 	}
