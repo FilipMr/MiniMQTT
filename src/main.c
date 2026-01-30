@@ -119,6 +119,16 @@ int main(int argc, char **argv)
     socklen_t peer_addr_len;
     struct epoll_event events[MAXEVENTS];
     struct epoll_event ev;
+    const char *your_if_ip = NULL;
+
+    if (argc > 2) {
+        fprintf(stderr, "Usage: %s [interface-ip]\n", argv[0]);
+        return 1;
+    }
+
+    if (argc > 1) {
+        your_if_ip = argv[1];
+    }
 
     if (demonize() < 0) {
         perror("daemon");
@@ -144,15 +154,27 @@ int main(int argc, char **argv)
 
     struct ip_mreq mreq;
     memset(&mreq, 0, sizeof(mreq));
-    mreq.imr_multiaddr.s_addr = inet_addr("239.1.2.3");      // your multicast group
+    mreq.imr_multiaddr.s_addr = inet_addr("239.1.2.3");      // Adres grupy multicastowej
+
+    // 
+    if (your_if_ip) {
+        if (inet_aton(your_if_ip, &mreq.imr_interface) == 0) {
+            fprintf(stderr, "Invalid interface IP: %s\n", your_if_ip);
+            exit(1);
+        }
+        printf("Using multicast interface: %s\n", your_if_ip);
+    } else {
+        mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+        printf("Using default multicast interface\n");
+    }
     
     // #define SYLWEK_USER /// ZAKOMENTUJ TA LINIJKE JESLI NIE JESTES SYLWKIEM :) 
-    #ifndef SYLWEK_USER
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    #endif
-    #ifdef SYLWEK_USER
-    mreq.imr_interface.s_addr = inet_addr("192.168.56.101");
-    #endif
+    // #ifndef SYLWEK_USER
+    // mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    // #endif
+    // #ifdef SYLWEK_USER
+    // mreq.imr_interface.s_addr = inet_addr("192.168.56.101");
+    // #endif
 
     if (setsockopt(multicastfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
         perror("IP_ADD_MEMBERSHIP");
