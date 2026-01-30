@@ -102,12 +102,7 @@ int main(int argc, char *argv[])
 {
     int         sockfd, n;
     struct      sockaddr_in servaddr;
-    char        recvline[MAXLINE+1];   
     int err;
-    const char* msg = "Hello Sylvo\n";
-	const char* client_id = "Filo *-* ";
-	const char* topic = "test/msg\n";
-	MQTTpacket fromServerdata; // struct do odbioru danych z servera
 	cliAnswer cliAnswer; 	   // struct do wysylania danych na server
 
 
@@ -244,7 +239,7 @@ int main(int argc, char *argv[])
     pthread_mutex_unlock(&subs_mutex);
 
 	// uzupełnianie struktury aby wysłać rządanie na server 
-	snprintf(&cliAnswer.client_id, sizeof(cliAnswer.client_id), "%s", "Filo");
+	snprintf(cliAnswer.client_id, sizeof(cliAnswer.client_id), "%s", "Filo");
 	cliAnswer.type = INFO_PACKET;
     sleep(1);
     printf("Press any key to continue...");
@@ -270,19 +265,19 @@ int main(int argc, char *argv[])
         printf("\nPublish payload on topic [press 'p']\n");
 		printf("Subscribe on topic [press 's']\n");
 		printf("\nChoose option: ");
-		scanf("%s", &cliAnswer.answer);
-		if(strcmp(&cliAnswer.answer, "p") == 0)
+		scanf("%s", cliAnswer.answer);
+		if(strcmp(cliAnswer.answer, "p") == 0)
 		{
 			printf("Type topic: ");
-			scanf("%s", &cliAnswer.topic);
+			scanf("%s", cliAnswer.topic);
 
 			printf("Type your payload: ");
-			scanf("%s", &cliAnswer.payload);
+			scanf("%s", cliAnswer.payload);
 		}
-		else if (strcmp(&cliAnswer.answer, "s") == 0)
+		else if (strcmp(cliAnswer.answer, "s") == 0)
 		{
 			printf("Type topic: ");
-			scanf("%s", &cliAnswer.topic);
+			scanf("%s", cliAnswer.topic);
             numOfSubscibedTopics++;
             pthread_mutex_lock(&subs_mutex);
             if (numOfSubscibedTopics > 0 && (sizeof(cliAnswer.topic) != 0))
