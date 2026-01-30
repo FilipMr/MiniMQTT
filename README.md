@@ -14,9 +14,11 @@ mkdir build
 cd build
 cmake ..
 make
-./MiniMQTT
+./MiniMQTT <localIpAddress>
 ./client_tcp
 ```
+
+In case of client error: "setsocketopt IP_MULTICAST_IF: Cannot assign requested address" set SYLWEK define and type your local IP
 ## Example usage 
 
 <img width="773" height="584" alt="image" src="https://github.com/user-attachments/assets/e3ffe306-6a73-4802-a38f-8396c09e717f" />
