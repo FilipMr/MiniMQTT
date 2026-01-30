@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        #define SYLWEK_USER
+        // #define SYLWEK_USER
         /// potrzebne tylko dla LAPTOPA SYLWKA, JESLI JESTES KIMS INNYM TO ZAKOMENTUJ TEN FRAGMENT
         #ifdef SYLWEK_USER
         struct in_addr multaddr;
