@@ -101,7 +101,7 @@ void* rx_thread(void* arg) {
 
             printf("\nPublish payload on topic [press 'p']\n");
             printf("Subscribe on topic [press 's']\n");
-            printf("\nChoose option: ");
+            printf("\nChoose option: \n");
 
             isUpdate = 0;
         }
